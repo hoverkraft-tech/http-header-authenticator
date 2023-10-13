@@ -59,7 +59,7 @@ jobs:
       - name: 🏭 Run skaffold build
         uses: hiberbee/github-action-skaffold@1.27.0
         with:
-          skaffold-version: 1.19.0
+          skaffold-version: 2.8.0
           command: build
           repository: harbor.hoverkraft.cloud/hoverkraftsh
           tag: ${{ github.event.inputs.tagVersion }}
