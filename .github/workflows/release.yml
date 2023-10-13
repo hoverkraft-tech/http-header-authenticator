@@ -61,7 +61,7 @@ jobs:
         with:
           skaffold-version: 2.8.0
           command: build
-          repository: docker.io
+          repository: ${{ env.SKAFFOLD_DEFAULT_REPO }}
           tag: ${{ github.event.inputs.tagVersion }}
 
   helm-push:
