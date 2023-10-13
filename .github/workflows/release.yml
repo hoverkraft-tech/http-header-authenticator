@@ -61,7 +61,7 @@ jobs:
         with:
           skaffold-version: 2.8.0
           command: build
-          repository: harbor.hoverkraft.cloud/hoverkraftsh
+          repository: docker.io
           tag: ${{ github.event.inputs.tagVersion }}
 
   helm-push:
@@ -86,8 +86,8 @@ jobs:
           HARBOR_REGISTRY_PASSWORD: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
           HARBOR_REGISTRY: harbor.hoverkraft.cloud
 
-      # Push hre-controller chart
-      - name: ⚓ Push Helm Chart to Harbor - hre-controller
+      # Push the chart
+      - name: ⚓ Push Helm Chart to Harbor registry
         uses: hoverkraft-tech/helm-push@v5.0.0
         with:
           useOCIRegistry: true
@@ -104,7 +104,9 @@ jobs:
 
   release:
     name: 📦 Release
-    needs: skaffold-build
+    needs:
+    - skaffold-build
+    - helm-push
     runs-on: ubuntu-latest
     steps:
       - uses: tibdex/github-app-token@v2
