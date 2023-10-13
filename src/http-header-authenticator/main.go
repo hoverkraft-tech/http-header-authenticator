@@ -44,7 +44,9 @@ func main() {
 			})
 
 			fmt.Printf("Server is starting on port 8080...\n")
-			r.Run(":8080")
+			if err := r.Run(":8080"); err != nil {
+				fmt.Printf("Server failed to start: %v\n", err)
+			}
 		},
 	}
 

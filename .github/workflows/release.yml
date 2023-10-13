@@ -29,13 +29,13 @@ jobs:
     needs: ci
     runs-on: self-hosted
     steps:
-      # Login to harbor repo
-      - name: 🔒 Login to Harbor
+      # Login to docker hub
+      - name: 🔒 Login to hub
         uses: docker/login-action@v1
         with:
-          username: ${{ secrets.HARBOR_REGISTRY_USER }}
-          password: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
-          registry: harbor.hoverkraft.cloud
+          username: ${{ secrets.DOCKERHUB_REGISTRY_USER }}
+          password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+          registry: docker.io
 
       # Get a local copy of the code
       - uses: actions/checkout@v4
