@@ -1,0 +1,30 @@
+name: Internal - Common Continuous Integration tasks
+
+on:
+  workflow_call:
+
+jobs:
+  checks:
+    name: Run Python3 tests
+    runs-on: self-hosted
+    steps:
+    - uses: actions/checkout@v4
+    - uses: actions/setup-python@v4
+      with:
+        python-version: '3.8'
+    - name: ♻️ Pip cache
+      uses: actions/cache@v3
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-hre-controller-pip-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-hre-controller-pip
+
+    # FIXME: disabled because of this issue https://github.com/kubernetes-client/python/issues/1813
+    # pyup.io does not seem to be a reliable source (forcing use of commercial support)
+    # - uses: homoluctus/pip-audit-action@v1
+    #   with:
+    #     type: pip
+
+    - uses: cclauss/Find-Python-syntax-errors-action@v0.2.0
+    # TODO: add some code quality / style tests

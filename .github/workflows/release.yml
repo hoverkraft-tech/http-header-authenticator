@@ -1,0 +1,154 @@
+name: 🚀 Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      tagVersion:
+        description: "Tag Version (semver - x.x.x)"
+        required: true
+
+jobs:
+  check-branches:
+    name: Check branches
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch
+        run: |
+          if [[ "${{ github.ref_name }}" != "${{ github.event.repository.default_branch }}" ]]; then
+            echo "This action can only be run on the ${{ github.event.repository.default_branch }} branch"
+            exit 1
+          fi
+
+  ci:
+    needs: check-branches
+    name: Continuous Integration
+    uses: ./.github/workflows/__shared-ci.yml
+
+  skaffold-build:
+    name: 👷‍♂️ Run skaffold build
+    needs: ci
+    runs-on: self-hosted
+    steps:
+      # Login to harbor repo
+      - name: 🔒 Login to Harbor
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.HARBOR_REGISTRY_USER }}
+          password: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
+          registry: harbor.hoverkraft.cloud
+
+      # Get a local copy of the code
+      - uses: actions/checkout@v4
+
+      # Prepare cache storage
+      - name: ♻️ Cache skaffold dirs
+        uses: actions/cache@v3
+        env:
+          cache-name: cache-skaffold
+        with:
+          path: /home/runner/.skaffold
+          key: skaffold-${{ github.sha }}
+          restore-keys: |
+            skaffold-
+
+      # Install tools with asdf
+      - name: 📦 Install tools with asdf
+        uses: asdf-vm/actions/install@v2
+
+      # Run a skaffold build
+      - name: 🏭 Run skaffold build
+        uses: hiberbee/github-action-skaffold@1.27.0
+        with:
+          skaffold-version: 1.19.0
+          command: build
+          repository: harbor.hoverkraft.cloud/hoverkraftsh
+          tag: ${{ github.event.inputs.tagVersion }}
+
+  helm-push:
+    name: 👷‍♂️ Run helm push
+    needs: ci
+    runs-on: self-hosted
+    steps:
+      # Get a local copy of the code
+      - uses: actions/checkout@v4
+
+      # install tools with asdf
+      - name: 📦 Install tools with asdf
+        uses: asdf-vm/actions/install@v2
+
+      # login to harbor repo
+      - name: 🔒 Login to harbor repo
+        run: |
+          echo "+ login to harbor OCI registry"
+          helm registry login ${HARBOR_REGISTRY} -u "${HARBOR_REGISTRY_USER}" -p "${HARBOR_REGISTRY_PASSWORD}"
+        env:
+          HARBOR_REGISTRY_USER: ${{ secrets.HARBOR_REGISTRY_USER }}
+          HARBOR_REGISTRY_PASSWORD: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
+          HARBOR_REGISTRY: harbor.hoverkraft.cloud
+
+      # Push hre-controller chart
+      - name: ⚓ Push Helm Chart to Harbor - hre-controller
+        uses: hoverkraft-tech/helm-push@v5.0.0
+        with:
+          useOCIRegistry: true
+          username: ${{ secrets.HARBOR_REGISTRY_USER }}
+          # NOTE: access-token is the password for OCI registry
+          #       cf https://github.com/bsord/helm-push/blob/5ec3320fb5720a0a5aa210d871999f2b836f2d97/entrypoint.sh#L37
+          access-token: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
+          registry-url: oci://harbor.hoverkraft.cloud/hoverkraftsh/hre-controller/charts
+          chart-folder: k8s/hre-controller
+          force: true
+          update-dependencies: true
+          version: ${{ github.event.inputs.tagVersion }}
+          appVersion: ${{ github.event.inputs.tagVersion }}
+
+  release:
+    name: 📦 Release
+    needs: skaffold-build
+    runs-on: self-hosted
+    steps:
+      - uses: tibdex/github-app-token@v2
+        id: generate-token
+        with:
+          app_id: ${{ vars.CI_BOT_APP_ID }}
+          private_key: ${{ secrets.CI_BOT_APP_PRIVATE_KEY }}
+
+      # checkout code
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v1.0.0
+        with:
+          myToken: ${{ steps.generate-token.outputs.token }}
+
+      - name: Create a GitHub release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+        with:
+          tag_name: ${{ github.event.inputs.tagVersion }}
+          release_name: Release ${{ github.event.inputs.tagVersion }}
+          body: ${{ steps.changelog.outputs.changelog }}
+
+  deploy:
+    name: 🚀 deploy
+    needs:
+      - skaffold-build
+      - helm-push
+    runs-on: self-hosted
+    steps:
+      - uses: tibdex/github-app-token@v2
+        id: generate-token
+        with:
+          app_id: ${{ vars.CI_BOT_APP_ID }}
+          private_key: ${{ secrets.CI_BOT_APP_PRIVATE_KEY }}
+
+      - uses: benc-uk/workflow-dispatch@v1
+        with:
+          workflow: Continuous Integration
+          repo: hoverkraft-sh/infra
+          token: ${{ steps.generate-token.outputs.token }}
+          inputs: '{ "projectName": "hre-controller", "tagVersion": "${{ github.event.inputs.tagVersion }}" }'

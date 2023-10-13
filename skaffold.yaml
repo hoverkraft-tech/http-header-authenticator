@@ -1,0 +1,13 @@
+apiVersion: skaffold/v4beta7
+kind: Config
+build:
+  local:
+    tryImportMissing: true
+    useBuildkit: true
+  tagPolicy:
+    gitCommit: {}
+  artifacts:
+    - image: http-header-authenticator
+      docker:
+        dockerfile: Dockerfile
+deploy: {}
