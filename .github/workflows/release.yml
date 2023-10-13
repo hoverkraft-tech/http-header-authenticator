@@ -95,8 +95,8 @@ jobs:
           # NOTE: access-token is the password for OCI registry
           #       cf https://github.com/bsord/helm-push/blob/5ec3320fb5720a0a5aa210d871999f2b836f2d97/entrypoint.sh#L37
           access-token: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
-          registry-url: oci://harbor.hoverkraft.cloud/hoverkraftsh/hre-controller/charts
-          chart-folder: k8s/hre-controller
+          registry-url: oci://harbor.hoverkraft.cloud/public/charts
+          chart-folder: helm/chart
           force: true
           update-dependencies: true
           version: ${{ github.event.inputs.tagVersion }}
@@ -132,23 +132,3 @@ jobs:
           tag_name: ${{ github.event.inputs.tagVersion }}
           release_name: Release ${{ github.event.inputs.tagVersion }}
           body: ${{ steps.changelog.outputs.changelog }}
-
-  deploy:
-    name: 🚀 deploy
-    needs:
-      - skaffold-build
-      - helm-push
-    runs-on: self-hosted
-    steps:
-      - uses: tibdex/github-app-token@v2
-        id: generate-token
-        with:
-          app_id: ${{ vars.CI_BOT_APP_ID }}
-          private_key: ${{ secrets.CI_BOT_APP_PRIVATE_KEY }}
-
-      - uses: benc-uk/workflow-dispatch@v1
-        with:
-          workflow: Continuous Integration
-          repo: hoverkraft-sh/infra
-          token: ${{ steps.generate-token.outputs.token }}
-          inputs: '{ "projectName": "hre-controller", "tagVersion": "${{ github.event.inputs.tagVersion }}" }'
