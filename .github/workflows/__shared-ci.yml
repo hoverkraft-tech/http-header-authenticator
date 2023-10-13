@@ -58,3 +58,4 @@ jobs:
         with:
           github-token: ${{ secrets.github_token }}
           file: coverage.lcov
+          allow-empty: true
