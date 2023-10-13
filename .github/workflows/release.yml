@@ -53,7 +53,7 @@ jobs:
 
       # Install tools with asdf
       - name: 📦 Install tools with asdf
-        uses: asdf-vm/actions/install@v2
+        uses: asdf-vm/actions/install@v3
 
       # Run a skaffold build
       - name: 🏭 Run skaffold build
@@ -74,7 +74,7 @@ jobs:
 
       # install tools with asdf
       - name: 📦 Install tools with asdf
-        uses: asdf-vm/actions/install@v2
+        uses: asdf-vm/actions/install@v3
 
       # login to harbor repo
       - name: 🔒 Login to harbor repo
