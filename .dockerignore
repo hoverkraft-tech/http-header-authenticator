@@ -23,3 +23,16 @@
 **/values.dev.yaml
 LICENSE
 README.md
+.tool-versions
+docker-compose.*
+
+ct.yaml
+helm
+
+.cache
+.env
+.github
+.golangci.yml
+coverage.out
+Makefile
+skaffold.yaml

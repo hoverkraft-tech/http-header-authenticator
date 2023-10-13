@@ -1,16 +1,21 @@
-#build stage
+# build stage
 FROM golang:alpine AS builder
 RUN apk add --no-cache git
 WORKDIR /go/src/app
+COPY go.* .
 COPY src/ .
-RUN go get -d -v ./...
-RUN go build -o /go/bin/app -v ./...
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go get -d -v ./...
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -o /go/bin/app -v ./...
 
-#final stage
-FROM alpine:latest
+# final stage
+FROM alpine:3.18
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /go/bin/app /app
 COPY entrypoint.sh /entrypoint.sh
 ENTRYPOINT ["/bin/sh", "/entrypoint.sh"]
-LABEL Name=http-header-authenticator Version=0.0.1
+LABEL "name"="http-header-authenticator" "version"="0.1.0"
 EXPOSE 8080
