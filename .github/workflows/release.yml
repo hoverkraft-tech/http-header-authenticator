@@ -146,7 +146,7 @@ jobs:
           app_id: ${{ vars.CI_BOT_APP_ID }}
           private_key: ${{ secrets.CI_BOT_APP_PRIVATE_KEY }}
 
-      - uses: benc-uk/workflow-dispatch@v1
+      - uses: benc-uk/workflow-dispatch@v121
         with:
           workflow: Continuous Integration
           repo: hoverkraft-sh/infra
