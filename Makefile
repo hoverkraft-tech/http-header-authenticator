@@ -1,4 +1,10 @@
-ci: golang-ci
+ci: go-tests go-cover golang-ci
+
+go-tests: src/* go.mod go.sum
+	go test -v ./...
+
+go-cover: src/* go.mod go.sum
+	go test -coverprofile=coverage.out ./...
 
 golang-ci: src/* go.mod go.sum
 	docker run --rm -t \

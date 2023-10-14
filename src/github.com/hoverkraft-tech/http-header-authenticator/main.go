@@ -2,12 +2,13 @@ package main
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/gin-contrib/logger"
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
-	"net/http"
 )
 
 func main() {
@@ -34,12 +35,18 @@ func main() {
 			r.Use(requestid.New())
 			r.Use(logger.SetLogger(l))
 
-			r.GET("/", func(c *gin.Context) {
+			// Health check endpoint
+			r.GET("/health", func(c *gin.Context) {
+				c.String(http.StatusOK, "OK")
+			})
+
+			// Check the presence of the header in all requests
+			r.NoRoute(func(c *gin.Context) {
 				value := c.GetHeader(headerName)
 				if value == expectedValue {
 					c.String(http.StatusOK, "HTTP header is present with the expected value.")
 				} else {
-					c.String(http.StatusNotFound, "HTTP header is not present with the expected value.")
+					c.String(http.StatusForbidden, "HTTP header is not present with the expected value.")
 				}
 			})
 
