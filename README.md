@@ -21,9 +21,7 @@ See https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/co
 ### using helm
 
 ```sh
-helm repo add hoverkraft-tech harbor.hoverkraft.cloud/public/charts
-helm repo update hoverkraft-tech
-helm upgrade http-header-authenticator hoverkraft-tech/http-header-authenticator \
+helm upgrade http-header-authenticator oci://harbor.hoverkraft.cloud/public/charts/http-header-authenticator \
   --install --create-namespace --namespace http-header-authenticator
 ```
 
