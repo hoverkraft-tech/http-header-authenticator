@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"strings"
 
-	"github.com/gin-contrib/logger"
 	"github.com/gin-contrib/requestid"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
@@ -27,13 +28,13 @@ func main() {
 				return
 			}
 
-			r := gin.Default()
+			l := zerolog.New(os.Stdout).With().Timestamp().Logger()
+			l.Info().Msg(fmt.Sprintf("Expected header is '%s' and expected value is '%s'", headerName, expectedValue))
 
-			l := logger.WithLogger(func(_ *gin.Context, l zerolog.Logger) zerolog.Logger {
-				return l.Output(gin.DefaultWriter).With().Logger()
-			})
+			r := gin.New()
+			r.Use(gin.Recovery())
 			r.Use(requestid.New())
-			r.Use(logger.SetLogger(l))
+			r.Use(CustomLoggerMiddleware(l))
 
 			// Health check endpoint
 			r.GET("/health", func(c *gin.Context) {
@@ -44,9 +45,9 @@ func main() {
 			r.NoRoute(func(c *gin.Context) {
 				value := c.GetHeader(headerName)
 				if value == expectedValue {
-					c.String(http.StatusOK, "HTTP header is present with the expected value.")
+					c.JSON(http.StatusOK, "HTTP header is present with the expected value.")
 				} else {
-					c.String(http.StatusForbidden, "HTTP header is not present with the expected value.")
+					c.JSON(http.StatusForbidden, "HTTP header is not present with the expected value.")
 				}
 			})
 
@@ -60,5 +61,25 @@ func main() {
 	rootCmd.AddCommand(checkCmd)
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
+	}
+}
+
+func CustomLoggerMiddleware(logger zerolog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		// Continue processing other middleware and the request
+		c.Next()
+
+		// Check the request path and exclude the health route from logging
+		if c.Request.URL.Path != "/health" {
+			logger.Info().
+				Str("request_id", c.Request.Header.Get("X-Request-ID")).
+				Str("client_ip", strings.Split(c.Request.RemoteAddr, ":")[0]).
+				Int("status", c.Writer.Status()).
+				Str("method", c.Request.Method).
+				Str("path", c.Request.URL.Path).
+				Str("protocol", c.Request.Proto).
+				Str("user_agent", c.Request.UserAgent()).
+				Msg("")
+		}
 	}
 }
