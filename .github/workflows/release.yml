@@ -10,7 +10,7 @@ on:
 jobs:
   check-branches:
     name: Check branches
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - name: Check branch
         run: |
@@ -27,7 +27,7 @@ jobs:
   skaffold-build:
     name: 👷‍♂️ Run skaffold build
     needs: ci
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       # Login to docker hub
       - name: 🔒 Login to hub
@@ -67,7 +67,7 @@ jobs:
   helm-push:
     name: 👷‍♂️ Run helm push
     needs: ci
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       # Get a local copy of the code
       - uses: actions/checkout@v4
@@ -107,7 +107,7 @@ jobs:
     needs:
     - skaffold-build
     - helm-push
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     steps:
       - uses: tibdex/github-app-token@v2
         id: generate-token
