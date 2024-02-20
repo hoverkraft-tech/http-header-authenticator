@@ -2,13 +2,6 @@ name: Internal - Common Continuous Integration tasks
 
 on:
   workflow_call:
-    secrets:
-      REGISTRY_SERVER:
-        required: true
-      REGISTRY_USERNAME:
-        required: true
-      REGISTRY_PASSWORD:
-        required: true
 
 jobs:
 
@@ -116,9 +109,9 @@ jobs:
       - name: 🔒 Login to hub
         uses: docker/login-action@v3
         with:
-          username: ${{ secrets.REGISTRY_USERNAME }}
-          password: ${{ secrets.REGISTRY_PASSWORD }}
-          registry: ${{ secrets.REGISTRY_SERVER   }}
+          username: ${{ secrets.DOCKERHUB_REGISTRY_USER }}
+          password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+          registry: ${{ var.SKAFFOLD_DEFAULT_REPO   }}
 
       # Get a local copy of the code
       - uses: actions/checkout@v4
@@ -156,5 +149,5 @@ jobs:
         with:
           skaffold-version: 2.8.0
           command: build
-          repository: ${{ secrets.REGISTRY_SERVER }}
+          repository: ${{ var.SKAFFOLD_DEFAULT_REPO }}
           tag: ${{ github.event.inputs.tagVersion }}

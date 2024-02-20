@@ -27,7 +27,4 @@ jobs:
       contents: write
     steps:
       - uses: ./.github/workflows/__shared-ci.yml
-        secrets:
-          REGISTRY_SERVER: ${{ env.SKAFFOLD_DEFAULT_REPO             }}
-          REGISTRY_USERNAME: ${{ secrets.DOCKERHUB_REGISTRY_USER     }}
-          REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+        secrets: inherit
