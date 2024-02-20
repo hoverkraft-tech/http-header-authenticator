@@ -15,6 +15,26 @@ jobs:
     uses: ./.github/workflows/__shared-ci.yml
     secrets: inherit
 
+  docker-build-images:
+    name: Docker Build Images
+    needs: ci
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.14.4
+    secrets:
+      oci-registry-password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+    with:
+      runs-on: '["self-hosted"]'
+      oci-registry: "docker.io"
+      oci-registry-username: "${{ secrets.DOCKERHUB_REGISTRY_USER }}"
+      images: |
+        [{
+          "image": "http-header-authenticator",
+          "dockerfile": "./Dockerfile",
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ]
+        }]
+
   update_release_draft:
     # we want to publish a new tag only if ci succeeds
     needs: ci
