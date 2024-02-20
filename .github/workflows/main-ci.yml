@@ -26,11 +26,10 @@ jobs:
       packages: write
       pull-requests: read
     secrets:
-      oci-registry-password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+      oci-registry-password: ${{ secrets.GITHUB_TOKEN }}
     with:
       runs-on: '["self-hosted"]'
-      oci-registry: "docker.io/webofmars"
-      oci-registry-username: ${{ vars.DOCKERHUB_REGISTRY_USERNAME }}
+      oci-registry: "ghcr.io"
       images: |
         [{
           "name": "app",
