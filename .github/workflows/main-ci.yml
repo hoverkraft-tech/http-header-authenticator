@@ -19,6 +19,11 @@ jobs:
     name: Docker Build Images
     needs: ci
     uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.14.4
+    permissions:
+      issues: read
+      packages: write
+      pull-requests: read
+      id-token: write
     secrets:
       oci-registry-password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
     with:
