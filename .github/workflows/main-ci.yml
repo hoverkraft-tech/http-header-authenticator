@@ -13,6 +13,10 @@ jobs:
   ci:
     name: Continuous Integration
     uses: ./.github/workflows/__shared-ci.yml
+    secrets:
+      REGISTRY_SERVER: ${{ var.SKAFFOLD_DEFAULT_REPO             }}
+      REGISTRY_USERNAME: ${{ secrets.DOCKERHUB_REGISTRY_USER     }}
+      REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
 
   update_release_draft:
     permissions:

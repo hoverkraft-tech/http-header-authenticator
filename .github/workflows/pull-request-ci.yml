@@ -2,16 +2,17 @@ name: Pull request - Continuous Integration
 
 on:
   pull_request:
-    branches: [main]
+    branches:
+      - main
 
 jobs:
 
   pull-request-labeler:
+    name: Pull request labeler
     runs-on: self-hosted
     permissions:
       contents: write
       pull-requests: write
-
     steps:
       - uses: release-drafter/release-drafter@v6
         env:
@@ -21,4 +22,12 @@ jobs:
 
   ci:
     name: Continuous Integration
-    uses: ./.github/workflows/__shared-ci.yml
+    runs-on: self-hosted
+    permissions:
+      contents: write
+    steps:
+      - uses: ./.github/workflows/__shared-ci.yml
+        secrets:
+          REGISTRY_SERVER: ${{ var.SKAFFOLD_DEFAULT_REPO             }}
+          REGISTRY_USERNAME: ${{ secrets.DOCKERHUB_REGISTRY_USER     }}
+          REGISTRY_PASSWORD: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
