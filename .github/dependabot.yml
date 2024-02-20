@@ -1,7 +1,39 @@
 # .github/dependabot.yml
 version: 2
 updates:
+
   - package-ecosystem: "github-actions"
     directory: "/"
+    open-pull-requests-limit: 20
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - '*'
     schedule:
-      interval: "weekly" # Check for updates to GitHub Actions every week
+      interval: "weekly"
+      day: friday
+      time: '04:00'
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    open-pull-requests-limit: 20
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - '*'
+    schedule:
+      interval: "weekly"
+      day: friday
+      time: '04:10'
+
+  - package-ecosystem: "gomod"
+    directory: "/"
+    open-pull-requests-limit: 20
+    groups:
+      github-actions-dependencies:
+        patterns:
+          - '*'
+    schedule:
+      interval: "weekly"
+      day: friday
+      time: '04:20'
