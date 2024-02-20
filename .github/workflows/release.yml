@@ -23,6 +23,12 @@ jobs:
     needs: check-branches
     name: Continuous Integration
     uses: ./.github/workflows/__shared-ci.yml
+    permissions:
+      contents: read
+      id-token: write
+      issues: read
+      packages: write
+      pull-requests: read
 
   update_release_draft:
     # we want to publish a new tag only if ci succeeds
