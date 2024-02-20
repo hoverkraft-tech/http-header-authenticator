@@ -18,7 +18,7 @@ updates:
     directory: "/"
     open-pull-requests-limit: 20
     groups:
-      github-actions-dependencies:
+      docker-dependencies:
         patterns:
           - '*'
     schedule:
@@ -30,7 +30,7 @@ updates:
     directory: "/"
     open-pull-requests-limit: 20
     groups:
-      github-actions-dependencies:
+      go-dependencies:
         patterns:
           - '*'
     schedule:
