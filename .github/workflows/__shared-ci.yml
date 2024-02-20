@@ -14,6 +14,7 @@ on:
 jobs:
 
   golangci-lint:
+    name: "Go: Lint"
     runs-on: self-hosted
     steps:
       - name: Checkout code
@@ -28,6 +29,7 @@ jobs:
           version: v1.54
 
   go-test:
+    name: "Go: Test"
     strategy:
       matrix:
         go-version: ['1.21']
@@ -45,6 +47,7 @@ jobs:
         run: go test ./... -v -covermode=count
 
   go-coverage:
+    name: "Go: Coverage"
     runs-on: self-hosted
     steps:
       - name: Checkout code
@@ -69,6 +72,7 @@ jobs:
           allow-empty: true
 
   chart-testing:
+    name: "Helm: Chart Testing"
     runs-on: self-hosted
     steps:
 
@@ -110,7 +114,7 @@ jobs:
         run: ct install --target-branch ${{ github.event.repository.default_branch }}
 
   docker-build-images:
-    name: Docker Build Images
+    name: "Docker: Build Images"
     needs: [golangci-lint, go-test, go-coverage, chart-testing]
     uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.14.4
     permissions:

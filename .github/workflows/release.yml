@@ -2,10 +2,6 @@ name: 🚀 Release
 
 on:
   workflow_dispatch:
-    inputs:
-      tagVersion:
-        description: "Tag Version (semver - x.x.x)"
-        required: true
 
 jobs:
   check-branches:
@@ -31,6 +27,7 @@ jobs:
       pull-requests: read
 
   update_release_draft:
+    name: Draft a new release
     # we want to publish a new tag only if ci succeeds
     needs: ci
     permissions:
@@ -69,7 +66,7 @@ jobs:
           docker push "$APP_DOCKERIO_IMAGE"
 
   helm-push:
-    name: 👷‍♂️ Run helm push
+    name: "Helm: push chart to harbor registry"
     needs: ci
     runs-on: self-hosted
     steps:
