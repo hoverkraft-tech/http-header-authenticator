@@ -24,7 +24,7 @@ jobs:
     with:
       runs-on: '["self-hosted"]'
       oci-registry: "docker.io"
-      oci-registry-username: ${{ secrets.DOCKERHUB_REGISTRY_USER }}
+      oci-registry-username: ${{ vars.DOCKERHUB_REGISTRY_USERNAME }}
       images: |
         [{
           "image": "http-header-authenticator",
