@@ -40,6 +40,33 @@ jobs:
           ]
         }]
 
+  dockerhub-publish:
+    name: Dockerhub Publish
+    needs: docker-build-images
+    runs-on: self-hosted
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: "ghcr.io"
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/login-action@v3
+        with:
+          registry: "docker.io"
+          username: ${{ secrets.DOCKERHUB_REGISTRY_USER     }}
+          password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+
+      - name: Push built images to Docker.io
+        run: |
+          APP_IMAGE="${{ fromJson(needs.docker-build-images.outputs.built-images).app.images[0] }}"
+          docker pull "$APP_IMAGE"
+          APP_TAG="${{ fromJson(needs.docker-build-images.outputs.built-images).APP.tags[0] }}"
+          APP_REGISTRY_PATH="docker.io/webofmars"
+          APP_DOCKERIO_IMAGE="${APP_REGISTRY_PATH}/http-header-authenticator:$APP_TAG"
+          docker tag "$APP_IMAGE" "$APP_DOCKERIO_IMAGE"
+          docker push "$APP_DOCKERIO_IMAGE"
+
   update_release_draft:
     # we want to publish a new tag only if ci succeeds
     needs: ci
