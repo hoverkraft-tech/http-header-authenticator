@@ -2,6 +2,14 @@ name: Internal - Common Continuous Integration tasks
 
 on:
   workflow_call:
+    inputs:
+      tag:
+        description: "Tag Version (semver - x.x.x)"
+        type: string
+        required: false
+    outputs:
+      built-images:
+        value: ${{ jobs.docker-build-images.outputs.built-images }}
 
 jobs:
 
@@ -101,3 +109,28 @@ jobs:
         if: steps.list-changed.outputs.changed == 'true'
         run: ct install --target-branch ${{ github.event.repository.default_branch }}
 
+  docker-build-images:
+    name: Docker Build Images
+    needs: [golangci-lint, go-test, go-coverage, chart-testing]
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.14.4
+    permissions:
+      contents: read
+      id-token: write
+      issues: read
+      packages: write
+      pull-requests: read
+    secrets:
+      oci-registry-password: ${{ secrets.GITHUB_TOKEN }}
+    with:
+      runs-on: '["self-hosted"]'
+      oci-registry: "ghcr.io"
+      images: |
+        [{
+          "name": "app",
+          "tag": "${{ inputs.tag }}",
+          "dockerfile": "./Dockerfile",
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ]
+        }]
