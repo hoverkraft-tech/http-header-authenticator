@@ -58,6 +58,18 @@ jobs:
       - name: 📦 Install tools with asdf
         uses: asdf-vm/actions/install@v3
 
+      # install buildx
+      # FIXME: should not this being done upstream ?
+      - name: 📦 Install buildx
+        run: |
+          echo "+ install buildx"
+          wget -O ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v0.12.1/buildx-v0.12.1.linux-amd64
+          chmod a+x ~/.docker/cli-plugins/docker-buildx
+          docker buildx create --name multiarch --use
+          docker buildx inspect --bootstrap
+        env:
+          DOCKER_CLI_EXPERIMENTAL: enabled
+
       # Run a skaffold build
       - name: 🏭 Run skaffold build
         uses: hiberbee/github-action-skaffold@1.27.0
