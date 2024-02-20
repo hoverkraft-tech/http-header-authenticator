@@ -111,7 +111,7 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_REGISTRY_USER }}
           password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
-          registry: ${{ env.SKAFFOLD_DEFAULT_REPO   }}
+          registry: ${{ vars.SKAFFOLD_DEFAULT_REPO   }}
 
       # Get a local copy of the code
       - uses: actions/checkout@v4
@@ -151,5 +151,5 @@ jobs:
         with:
           skaffold-version: 2.8.0
           command: build
-          repository: ${{ env.SKAFFOLD_DEFAULT_REPO }}
+          repository: ${{ vars.SKAFFOLD_DEFAULT_REPO }}
           tag: ${{ github.event.inputs.tagVersion }}

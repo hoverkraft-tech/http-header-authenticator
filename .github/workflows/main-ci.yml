@@ -16,6 +16,8 @@ jobs:
     secrets: inherit
 
   update_release_draft:
+    # we want to publish a new tag only if ci succeeds
+    needs: ci
     permissions:
       contents: write
       pull-requests: write
