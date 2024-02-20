@@ -103,7 +103,6 @@ jobs:
 
   skaffold-build:
     name: 👷‍♂️ Run skaffold build
-    needs: ci
     runs-on: self-hosted
     steps:
       # Login to docker hub
