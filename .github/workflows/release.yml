@@ -6,6 +6,9 @@ on:
       tagVersion:
         description: "Tag Version (semver - x.x.x)"
         required: true
+  push:
+    tags:
+      - '[0-9]+.[0-9]+.[0-9]+'
 
 jobs:
   check-branches:
