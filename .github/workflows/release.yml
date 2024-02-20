@@ -27,58 +27,6 @@ jobs:
     name: Continuous Integration
     uses: ./.github/workflows/__shared-ci.yml
 
-  skaffold-build:
-    name: 👷‍♂️ Run skaffold build
-    needs: ci
-    runs-on: self-hosted
-    steps:
-      # Login to docker hub
-      - name: 🔒 Login to hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKERHUB_REGISTRY_USER }}
-          password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
-          registry: docker.io
-
-      # Get a local copy of the code
-      - uses: actions/checkout@v4
-
-      # Prepare cache storage
-      - name: ♻️ Cache skaffold dirs
-        uses: actions/cache@v4
-        env:
-          cache-name: cache-skaffold
-        with:
-          path: /home/runner/.skaffold
-          key: skaffold-${{ github.sha }}
-          restore-keys: |
-            skaffold-
-
-      # Install tools with asdf
-      - name: 📦 Install tools with asdf
-        uses: asdf-vm/actions/install@v3
-
-      # install buildx
-      # FIXME: should not this being done upstream ?
-      - name: 📦 Install buildx
-        run: |
-          echo "+ install buildx"
-          wget -O ~/.docker/cli-plugins/docker-buildx https://github.com/docker/buildx/releases/download/v0.12.1/buildx-v0.12.1.linux-amd64
-          chmod a+x ~/.docker/cli-plugins/docker-buildx
-          docker buildx create --name multiarch --use
-          docker buildx inspect --bootstrap
-        env:
-          DOCKER_CLI_EXPERIMENTAL: enabled
-
-      # Run a skaffold build
-      - name: 🏭 Run skaffold build
-        uses: hiberbee/github-action-skaffold@1.27.0
-        with:
-          skaffold-version: 2.8.0
-          command: build
-          repository: ${{ vars.SKAFFOLD_DEFAULT_REPO }}
-          tag: ${{ github.event.inputs.tagVersion }}
-
   helm-push:
     name: 👷‍♂️ Run helm push
     needs: ci
