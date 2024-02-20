@@ -29,11 +29,11 @@ jobs:
       oci-registry-password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
     with:
       runs-on: '["self-hosted"]'
-      oci-registry: "docker.io"
+      oci-registry: "docker.io/webofmars"
       oci-registry-username: ${{ vars.DOCKERHUB_REGISTRY_USERNAME }}
       images: |
         [{
-          "image": "http-header-authenticator",
+          "name": "app",
           "dockerfile": "./Dockerfile",
           "platforms": [
             "linux/amd64",
