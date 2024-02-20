@@ -22,9 +22,5 @@ jobs:
 
   ci:
     name: Continuous Integration
-    runs-on: self-hosted
-    permissions:
-      contents: write
-    steps:
-      - uses: ./.github/workflows/__shared-ci.yml
-        secrets: inherit
+    uses: ./.github/workflows/__shared-ci.yml
+    secrets: inherit
