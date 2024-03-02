@@ -118,6 +118,7 @@ jobs:
     needs: [golangci-lint, go-test, go-coverage, chart-testing]
     uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.15.0
     permissions:
+      actions: write
       contents: read
       id-token: write
       issues: read
