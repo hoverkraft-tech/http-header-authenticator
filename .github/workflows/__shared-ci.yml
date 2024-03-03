@@ -71,6 +71,34 @@ jobs:
           file: coverage.lcov
           allow-empty: true
 
+  docker-build-images:
+    name: "Docker: Build Images"
+    needs: [golangci-lint, go-test, go-coverage, chart-testing]
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.15.0
+    permissions:
+      actions: write
+      contents: read
+      id-token: write
+      issues: read
+      packages: write
+      pull-requests: read
+    secrets:
+      oci-registry-password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+    with:
+      runs-on: '["self-hosted"]'
+      oci-registry: "docker.io"
+      oci-registry-username: ${{ vars.DOCKERHUB_REGISTRY_USERNAME }}
+      images: |
+        [{
+          "repository": "webofmars/http-header-authenticator",
+          "tag": "${{ inputs.tag }}",
+          "dockerfile": "./Dockerfile",
+          "platforms": [
+            "linux/amd64",
+            "linux/arm64"
+          ]
+        }]
+
   chart-testing:
     name: "Helm: Chart Testing"
     runs-on: self-hosted
@@ -112,30 +140,3 @@ jobs:
       - name: Run chart-testing (install)
         if: steps.list-changed.outputs.changed == 'true'
         run: ct install --target-branch ${{ github.event.repository.default_branch }}
-
-  docker-build-images:
-    name: "Docker: Build Images"
-    needs: [golangci-lint, go-test, go-coverage, chart-testing]
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.15.0
-    permissions:
-      actions: write
-      contents: read
-      id-token: write
-      issues: read
-      packages: write
-      pull-requests: read
-    secrets:
-      oci-registry-password: ${{ secrets.GITHUB_TOKEN }}
-    with:
-      runs-on: '["self-hosted"]'
-      oci-registry: "ghcr.io"
-      images: |
-        [{
-          "name": "app",
-          "tag": "${{ inputs.tag }}",
-          "dockerfile": "./Dockerfile",
-          "platforms": [
-            "linux/amd64",
-            "linux/arm64"
-          ]
-        }]
