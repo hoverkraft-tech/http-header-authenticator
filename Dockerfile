@@ -12,7 +12,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -o /go/bin/http-header-authenticator -v ./...
 
 # final stage
-FROM alpine:3.18
+FROM alpine:3.19
 RUN apk --no-cache add ca-certificates
 COPY --from=builder /go/bin/http-header-authenticator /usr/local/bin/http-header-authenticator
 COPY entrypoint.sh /entrypoint.sh
