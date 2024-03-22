@@ -116,7 +116,7 @@ jobs:
   docker-build-images:
     name: "Docker: Build Images"
     needs: [golangci-lint, go-test, go-coverage, chart-testing]
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.15.1
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.15.3
     permissions:
       actions: write
       contents: read
