@@ -1,104 +1,137 @@
-name: 🚀 Release
+# Prepare committed chart versions, validate the dispatched tag, then publish.
+name: Release
 
 on:
+  # checkov:skip=CKV_GHA_7:Force overrides only the no-change plan, never validation or publication checks.
   workflow_dispatch:
+    inputs:
+      force:
+        description: Release even without changes
+        type: boolean
+        default: false
+  schedule:
+    - cron: "25 8 * * 1"
+
+permissions: {}
+
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
 
 jobs:
-  check-branches:
-    name: Check branches
-    runs-on: self-hosted
-    steps:
-      - name: Check branch
-        run: |
-          if [[ "${{ github.ref_name }}" != "${{ github.event.repository.default_branch }}" ]]; then
-            echo "This action can only be run on the ${{ github.event.repository.default_branch }} branch"
-            exit 1
-          fi
-
-  ci:
-    needs: check-branches
-    name: Continuous Integration
-    uses: ./.github/workflows/__shared-ci.yml
+  prepare:
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/prepare-chart-release.yml@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
     permissions:
+      actions: write
+      contents: write
+      pull-requests: read
+    with:
+      path: helm/chart
+      update-app-version: true
+      force: ${{ github.event_name == 'workflow_dispatch' && inputs.force }}
+      github-app-client-id: ${{ vars.CI_BOT_APP_CLIENT_ID }}
+    secrets:
+      github-app-key: ${{ secrets.CI_BOT_APP_PRIVATE_KEY }}
+
+  validate:
+    needs: prepare
+    if: needs.prepare.outputs.status == 'ready'
+    uses: $/.github/workflows/__shared-ci.yml
+    permissions:
+      actions: read
+      attestations: write
       contents: read
       id-token: write
       issues: read
       packages: write
       pull-requests: read
+    with:
+      candidate-images: true
 
-  update_release_draft:
-    name: Draft a new release
-    # we want to publish a new tag only if ci succeeds
-    needs: ci
+  promote:
+    needs: validate
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-promote-images.yml@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
+    permissions:
+      actions: read
+      attestations: read
+      contents: read
+      deployments: write
+      packages: write
+      pull-requests: read
+    with:
+      job-results: ${{ needs.validate.outputs.job-results }}
+    secrets:
+      oci-registry-password: ${{ secrets.GITHUB_TOKEN }}
+
+  mirror:
+    name: Mirror validated image to Docker Hub
+    needs: [prepare, promote]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    steps:
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ vars.DOCKERHUB_REGISTRY_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - name: Copy the validated multi-platform manifest
+        env:
+          IMAGE: ${{ fromJSON(needs.promote.outputs.built-images).app.images[0] }}
+          RELEASE_TAG: ${{ needs.prepare.outputs.tag }}
+        run: docker buildx imagetools create --tag "docker.io/webofmars/http-header-authenticator:$RELEASE_TAG" "$IMAGE"
+
+  release-chart:
+    needs: [prepare, mirror]
+    runs-on: self-hosted
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Prepare release chart archive
+        id: prepare-chart
+        uses: hoverkraft-tech/ci-github-container/actions/helm/prepare-chart@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
+        with:
+          path: helm/chart
+
+      - name: Publish prepared chart archive
+        uses: hoverkraft-tech/ci-github-container/actions/helm/release-chart@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
+        with:
+          archive: ${{ steps.prepare-chart.outputs.archive }}
+          checksum: ${{ steps.prepare-chart.outputs.checksum }}
+          oci-registry: harbor.hoverkraft.cloud
+          oci-repository: public/charts
+          oci-registry-username: ${{ secrets.HARBOR_REGISTRY_USER }}
+          oci-registry-password: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
+
+      - name: Clean prepared chart archive
+        if: always() && steps.prepare-chart.outputs.archive != ''
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          CHART_ARCHIVE: ${{ steps.prepare-chart.outputs.archive }}
+        with:
+          script: await io.rmRF(process.env.CHART_ARCHIVE);
+
+  release:
+    needs: [prepare, release-chart]
+    runs-on: ubuntu-latest
     permissions:
       contents: write
-      pull-requests: write
-    runs-on: self-hosted
+      pull-requests: read
     steps:
-      - id: update_release_draft
-        uses: release-drafter/release-drafter@v6
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: hoverkraft-tech/ci-github-publish/actions/release/create@80fa7011b27f49f2e04a19f932d36047d17a28f2 # 3.0.7
         with:
-          publish: true
-          disable-autolabeler: true
-
-      - uses: docker/login-action@v3
-        with:
-          registry: "ghcr.io"
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: docker/login-action@v3
-        with:
-          registry: "docker.io"
-          username: ${{ secrets.DOCKERHUB_REGISTRY_USER     }}
-          password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
-
-      - name: Push built images to Docker.io
-        run: |
-          APP_IMAGE="${{ fromJson(needs.ci.outputs.built-images).app.images[0] }}"
-          docker pull "$APP_IMAGE"
-          APP_TAG="${{ steps.update_release_draft.outputs.tag_name }}"
-          APP_REGISTRY_PATH="docker.io/webofmars"
-          APP_DOCKERIO_IMAGE="${APP_REGISTRY_PATH}/http-header-authenticator:$APP_TAG"
-          docker tag "$APP_IMAGE" "$APP_DOCKERIO_IMAGE"
-          docker push "$APP_DOCKERIO_IMAGE"
-
-  helm-push:
-    name: "Helm: push chart to harbor registry"
-    needs: ci
-    runs-on: self-hosted
-    steps:
-      # Get a local copy of the code
-      - uses: actions/checkout@v4
-
-      # install tools with asdf
-      - name: 📦 Install tools with asdf
-        uses: asdf-vm/actions/install@v3
-
-      # login to harbor repo
-      - name: 🔒 Login to harbor repo
-        run: |
-          echo "+ login to harbor OCI registry"
-          helm registry login ${HARBOR_REGISTRY} -u "${HARBOR_REGISTRY_USER}" -p "${HARBOR_REGISTRY_PASSWORD}"
-        env:
-          HARBOR_REGISTRY_USER: ${{ secrets.HARBOR_REGISTRY_USER }}
-          HARBOR_REGISTRY_PASSWORD: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
-          HARBOR_REGISTRY: harbor.hoverkraft.cloud
-
-      # Push the chart
-      - name: ⚓ Push Helm Chart to Harbor registry
-        uses: hoverkraft-tech/helm-push@v5.0.0
-        with:
-          useOCIRegistry: true
-          username: ${{ secrets.HARBOR_REGISTRY_USER }}
-          # NOTE: access-token is the password for OCI registry
-          #       cf https://github.com/bsord/helm-push/blob/5ec3320fb5720a0a5aa210d871999f2b836f2d97/entrypoint.sh#L37
-          access-token: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
-          registry-url: oci://harbor.hoverkraft.cloud/public/charts
-          chart-folder: helm/chart
-          force: true
-          update-dependencies: true
-          version: ${{ github.event.inputs.tagVersion }}
-          appVersion: ${{ github.event.inputs.tagVersion }}
+          tag: ${{ needs.prepare.outputs.tag }}
+          target-ref: ${{ github.sha }}
+          changelog-summary: ${{ format('{{"llmAuth":{0},"llmProvider":"openai"}}', toJSON(secrets.OPENAI_API_KEY)) }}
