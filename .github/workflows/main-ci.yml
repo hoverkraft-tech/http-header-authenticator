@@ -8,16 +8,19 @@ on:
 permissions:
   contents: read
 
-jobs:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
+jobs:
   ci:
     name: Continuous Integration
-    uses: ./.github/workflows/__shared-ci.yml
+    uses: $/.github/workflows/__shared-ci.yml
     permissions:
-      actions: write
+      attestations: write
+      actions: read
       contents: read
       id-token: write
       issues: read
       packages: write
       pull-requests: read
-    secrets: inherit
