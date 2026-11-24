@@ -1,3 +1,4 @@
+---
 name: Internal - Common Continuous Integration tasks
 
 on:
@@ -16,7 +17,43 @@ permissions:
   contents: read
 
 jobs:
-  go:
+  lint:
+    name: Repository quality
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/linter.yml@33462c06bcbbd9144d7f661929e61953604b444d # 4.3.2
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      packages: read
+      pull-requests: write
+      security-events: write
+      statuses: write
+    with:
+      comment: false
+      lint-all: true
+      javascript-linter-toolchain: ""
+      python-linter-toolchain: ""
+      linter-env: |
+        IGNORE_GITIGNORED_FILES=true
+        LOG_LEVEL=INFO
+        VALIDATE_BASH=true
+        VALIDATE_BASH_EXEC=true
+        VALIDATE_BIOME_FORMAT=true
+        VALIDATE_BIOME_LINT=true
+        VALIDATE_CHECKOV=true
+        VALIDATE_DOCKERFILE_HADOLINT=true
+        VALIDATE_GITHUB_ACTIONS=true
+        VALIDATE_GITHUB_ACTIONS_ZIZMOR=true
+        VALIDATE_GIT_COMMITLINT=${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
+        VALIDATE_MARKDOWN=true
+        VALIDATE_MARKDOWN_PRETTIER=true
+        VALIDATE_NATURAL_LANGUAGE=true
+        VALIDATE_SHELL_SHFMT=true
+        VALIDATE_TRIVY=true
+        VALIDATE_YAML=true
+        VALIDATE_YAML_PRETTIER=true
+
+  test:
     name: Go checks and coverage
     runs-on: ubuntu-latest
     steps:
@@ -27,14 +64,14 @@ jobs:
 
       # Track main while validating the new shared Go actions in consumers.
       - name: Setup Go
-        uses: hoverkraft-tech/ci-github-go/actions/setup-go@main
+        uses: hoverkraft-tech/ci-github-go/actions/setup-go@main # ratchet:exclude - track shared language CI during adoption
 
       - name: Lint
-        uses: hoverkraft-tech/ci-github-go/actions/lint@main
+        uses: hoverkraft-tech/ci-github-go/actions/lint@main # ratchet:exclude - track shared language CI during adoption
 
       - name: Test with race detection and coverage
         id: tests
-        uses: hoverkraft-tech/ci-github-go/actions/test@main
+        uses: hoverkraft-tech/ci-github-go/actions/test@main # ratchet:exclude - track shared language CI during adoption
 
       - name: Coveralls
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
@@ -44,7 +81,7 @@ jobs:
           format: golang
 
       - name: Audit dependencies
-        uses: hoverkraft-tech/ci-github-go/actions/audit@main
+        uses: hoverkraft-tech/ci-github-go/actions/audit@main # ratchet:exclude - track shared language CI during adoption
 
   chart-testing:
     name: Test chart with the built image
@@ -90,6 +127,7 @@ jobs:
           checksum: ${{ steps.prepare-chart.outputs.checksum }}
           config: ct.yaml
           helm-set: |
+            securityHeader.value=ci-test-value
             image.repository=${{ steps.image.outputs.repository }}
             image.tag=${{ steps.image.outputs.tag }}
             imagePullSecrets[0].name=regcred
@@ -104,7 +142,7 @@ jobs:
 
   docker-build-images:
     name: "Docker: Build Images"
-    needs: go
+    needs: [lint, test]
     uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
     permissions:
       attestations: write
@@ -147,10 +185,30 @@ jobs:
         env:
           IMAGE: ${{ fromJSON(needs.docker-build-images.outputs.built-images).app.images[0] }}
         run: |
-          container=$(docker run -d --rm -p 127.0.0.1::8080 -e HEADER=X-Test-Token -e VALUE=ci-test-value "$IMAGE")
+          container=$(docker run -d --rm --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --health-interval 1s -p 127.0.0.1::8080 -e HEADER=X-Test-Token -e VALUE=ci-test-value "$IMAGE")
           trap 'docker rm -f "$container" >/dev/null' EXIT
           port=$(docker port "$container" 8080/tcp | cut -d: -f2)
           url="http://127.0.0.1:$port"
           curl --fail --retry 15 --retry-connrefused --retry-delay 1 "$url/health"
           test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Test-Token: ci-test-value' "$url/check")" = 200
           test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Test-Token: wrong-value' "$url/check")" = 403
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$url/check")" = 403
+          test "$(docker exec "$container" id -u)" = 10001
+          for _ in {1..15}; do
+            if test "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy
+
+  reports:
+    if: ${{ !cancelled() }}
+    needs: [lint, test]
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/ci-reports.yml@33462c06bcbbd9144d7f661929e61953604b444d # 4.3.2
+    permissions:
+      contents: read
+      pull-requests: write
+    with:
+      job-results: ${{ toJSON(needs) }}

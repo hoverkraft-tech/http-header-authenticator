@@ -1,42 +1,51 @@
 # http-header-authenticator
 
-Go micro-service used to authenticate http requests based on provided fix http headers
+Go service that authenticates HTTP requests against a configured header and value.
 
-## usage
+## Usage
 
 ```sh
 http-header-authenticator check -H 'X-acme-auth' -V 'SomeSecurePassword'
 ```
 
 ```sh
-curl -H 'X-acme-auth: SomeSecurePassword' localhost:8080 # -> 200
-curl localhost:8080 # -> 404
+curl -H 'X-acme-auth: SomeSecurePassword' localhost:8080/check # -> 200
+curl localhost:8080/check # -> 403
 ```
 
-Can be used with nginx-ingress controller to authenticate requests comming from CDN servers
-See https://kubernetes.github.io/ingress-nginx/user-guide/nginx-configuration/configmap/#global-auth-url for inspiration
+Use it as an external authentication service for an ingress controller, for example
+to authenticate requests coming from a CDN. `/health` reports service readiness.
 
-## installation
+## Installation
 
-### using helm
+### Helm
 
 ```sh
 helm upgrade http-header-authenticator oci://harbor.hoverkraft.cloud/public/charts/http-header-authenticator \
-  --install --create-namespace --namespace http-header-authenticator
+  --install --create-namespace --namespace http-header-authenticator \
+  --set-string securityHeader.name=X-Auth-Token \
+  --set-string securityHeader.value="$AUTH_TOKEN"
 ```
 
-### docker
+Set `AUTH_TOKEN` to your authentication secret before installing. The chart runs as
+a non-root user with a read-only filesystem and resource budgets. Its NetworkPolicy
+allows incoming HTTP traffic and denies outbound connections. Adjust these values
+for your cluster and workload.
+
+### Docker
 
 - [Docker Hub](https://hub.docker.com/repository/docker/webofmars/http-header-authenticator)
 
 ```shell
-docker-compose up -d --build
+AUTH_TOKEN='replace-with-a-strong-secret' docker compose up -d --build
 ```
 
-### from sources
+### From source
 
 ```shell
 go build -o ./bin/http-header-authenticator ./src/github.com/hoverkraft-tech/http-header-authenticator
 ```
 
-See the [development guide](docs/development.md) for local checks.
+See the [development guide](docs/development/README.md) for local checks.
+
+See [Contributing](CONTRIBUTING.md) to develop or propose changes.

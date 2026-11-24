@@ -1,3 +1,4 @@
+---
 apiVersion: v2
 name: http-header-authenticator
 description: A Helm chart for http-header-authenticator

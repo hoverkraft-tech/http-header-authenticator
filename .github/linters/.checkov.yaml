@@ -1,0 +1,4 @@
+---
+quiet: true
+var-file:
+  - helm/chart/ci/default-values.yaml

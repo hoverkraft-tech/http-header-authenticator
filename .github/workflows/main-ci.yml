@@ -1,6 +1,10 @@
+---
 name: Main - Continuous Integration
 
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: "25 8 * * 1"
   push:
     branches:
       - main
@@ -21,6 +25,8 @@ jobs:
       actions: read
       contents: read
       id-token: write
-      issues: read
+      issues: write
       packages: write
-      pull-requests: read
+      pull-requests: write
+      security-events: write
+      statuses: write

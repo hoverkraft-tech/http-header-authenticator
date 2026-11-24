@@ -15,11 +15,13 @@ apiVersion: extensions/v1beta1
 {{- end }}
 kind: Ingress
 metadata:
+  namespace: {{ .Release.Namespace }}
   name: {{ $fullName }}
   labels:
     {{- include "chart.labels" . | nindent 4 }}
-  {{- with .Values.ingress.annotations }}
   annotations:
+    checkov.io/skip1: "CKV_K8S_21=Install into a dedicated namespace with --namespace; honor the Helm release namespace."
+  {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:

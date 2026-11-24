@@ -36,3 +36,6 @@ helm
 coverage.out
 Makefile
 skaffold.yaml
+/.devcontainer
+/super-linter-output
+/super-linter.log

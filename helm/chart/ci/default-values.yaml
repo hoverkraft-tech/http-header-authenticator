@@ -1,0 +1,4 @@
+---
+# Synthetic value for chart linting and isolated CI installs only.
+securityHeader:
+  value: ci-test-value
