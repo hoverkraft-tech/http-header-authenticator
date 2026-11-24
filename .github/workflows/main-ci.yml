@@ -9,6 +9,8 @@ on:
     branches:
       - main
 
+# jscpd:ignore-start
+# GitHub requires permissions and the shared-workflow call in each event entrypoint.
 permissions:
   contents: read
 
@@ -30,3 +32,4 @@ jobs:
       pull-requests: write
       security-events: write
       statuses: write
+# jscpd:ignore-end

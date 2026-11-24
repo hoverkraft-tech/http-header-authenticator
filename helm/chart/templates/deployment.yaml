@@ -1,3 +1,4 @@
+# trivy:ignore:KSV-0110 The installer selects .Release.Namespace with --namespace.
 apiVersion: apps/v1
 kind: Deployment
 metadata:

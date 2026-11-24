@@ -1,5 +1,17 @@
 # http-header-authenticator
 
+<div align="center">
+  <img src="https://github.com/hoverkraft-tech.png" alt="Hoverkraft logo" width="200" />
+</div>
+
+---
+
+[![Main - Continuous Integration](https://github.com/hoverkraft-tech/http-header-authenticator/actions/workflows/main-ci.yml/badge.svg)](https://github.com/hoverkraft-tech/http-header-authenticator/actions/workflows/main-ci.yml)
+[![GitHub release](https://img.shields.io/github/v/release/hoverkraft-tech/http-header-authenticator)](https://github.com/hoverkraft-tech/http-header-authenticator/releases)
+[![PRs welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
+## Overview
+
 Go service that authenticates HTTP requests against a configured header and value.
 
 ## Usage
@@ -48,4 +60,6 @@ go build -o ./bin/http-header-authenticator ./src/github.com/hoverkraft-tech/htt
 
 See the [development guide](docs/development/README.md) for local checks.
 
-See [Contributing](CONTRIBUTING.md) to develop or propose changes.
+## Contributing
+
+Contributions are welcome. Read [Contributing](CONTRIBUTING.md) before proposing a change.

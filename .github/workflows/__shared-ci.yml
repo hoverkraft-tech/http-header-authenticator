@@ -33,27 +33,12 @@ jobs:
       # Keep the repository-managed CodeQL default setup for Go.
       codeql-languages: ""
       lint-all: true
-      javascript-linter-toolchain: ""
-      python-linter-toolchain: ""
+      # GO_MODULES runs the full linter recursively; standalone-file mode cannot span packages.
       linter-env: |
+        VALIDATE_GO=false
+        GOTOOLCHAIN=local
         IGNORE_GITIGNORED_FILES=true
         LOG_LEVEL=INFO
-        VALIDATE_BASH=true
-        VALIDATE_BASH_EXEC=true
-        VALIDATE_BIOME_FORMAT=true
-        VALIDATE_BIOME_LINT=true
-        VALIDATE_CHECKOV=true
-        VALIDATE_DOCKERFILE_HADOLINT=true
-        VALIDATE_GITHUB_ACTIONS=true
-        VALIDATE_GITHUB_ACTIONS_ZIZMOR=true
-        VALIDATE_GIT_COMMITLINT=${{ github.event_name == 'push' || github.event_name == 'pull_request' }}
-        VALIDATE_MARKDOWN=true
-        VALIDATE_MARKDOWN_PRETTIER=true
-        VALIDATE_NATURAL_LANGUAGE=true
-        VALIDATE_SHELL_SHFMT=true
-        VALIDATE_TRIVY=true
-        VALIDATE_YAML=true
-        VALIDATE_YAML_PRETTIER=true
 
   test:
     name: Go checks and coverage
@@ -66,14 +51,14 @@ jobs:
 
       # Track main while validating the new shared Go actions in consumers.
       - name: Setup Go
-        uses: hoverkraft-tech/ci-github-go/actions/setup-go@main # ratchet:exclude - track shared language CI during adoption
+        uses: hoverkraft-tech/ci-github-go/actions/setup-go@main # ratchet:exclude # zizmor: ignore[unpinned-uses]
 
       - name: Lint
-        uses: hoverkraft-tech/ci-github-go/actions/lint@main # ratchet:exclude - track shared language CI during adoption
+        uses: hoverkraft-tech/ci-github-go/actions/lint@main # ratchet:exclude # zizmor: ignore[unpinned-uses]
 
       - name: Test with race detection and coverage
         id: tests
-        uses: hoverkraft-tech/ci-github-go/actions/test@main # ratchet:exclude - track shared language CI during adoption
+        uses: hoverkraft-tech/ci-github-go/actions/test@main # ratchet:exclude # zizmor: ignore[unpinned-uses]
 
       - name: Coveralls
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
@@ -83,7 +68,7 @@ jobs:
           format: golang
 
       - name: Audit dependencies
-        uses: hoverkraft-tech/ci-github-go/actions/audit@main # ratchet:exclude - track shared language CI during adoption
+        uses: hoverkraft-tech/ci-github-go/actions/audit@main # ratchet:exclude # zizmor: ignore[unpinned-uses]
 
   chart-testing:
     name: Test chart with the built image
@@ -134,6 +119,8 @@ jobs:
             image.tag=${{ steps.image.outputs.tag }}
             imagePullSecrets[0].name=regcred
 
+      # jscpd:ignore-start
+      # Both independent chart jobs must remove their own downloaded archive.
       - name: Clean prepared chart archive
         if: always() && steps.prepare-chart.outputs.archive != ''
         uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
@@ -141,6 +128,7 @@ jobs:
           CHART_ARCHIVE: ${{ steps.prepare-chart.outputs.archive }}
         with:
           script: await io.rmRF(process.env.CHART_ARCHIVE);
+          # jscpd:ignore-end
 
   docker-build-images:
     name: "Docker: Build Images"
@@ -193,8 +181,8 @@ jobs:
           port=$(docker port "$container" 8080/tcp | cut -d: -f2)
           url="http://127.0.0.1:$port"
           curl --fail --retry 15 --retry-connrefused --retry-delay 1 "$url/health"
-          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Test-Token: ci-test-value' "$url/check")" = 200
-          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Test-Token: wrong-value' "$url/check")" = 403
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Test-Token: ci-test-value' "$url/check")" = 200 # gitleaks:allow - test token
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Test-Token: wrong-value' "$url/check")" = 403 # gitleaks:allow - invalid test token
           test "$(curl -s -o /dev/null -w '%{http_code}' "$url/check")" = 403
           test "$(docker exec "$container" id -u)" = 10001
           for _ in {1..15}; do

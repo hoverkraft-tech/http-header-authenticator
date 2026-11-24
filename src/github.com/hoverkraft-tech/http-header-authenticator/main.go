@@ -22,7 +22,7 @@ func main() {
 	var checkCmd = &cobra.Command{
 		Use:   "check",
 		Short: "Check the presence of an HTTP header in a request",
-		Run: func(cmd *cobra.Command, args []string) {
+		Run: func(_ *cobra.Command, _ []string) {
 			if headerName == "" || expectedValue == "" {
 				fmt.Println("Header name and expected value are required.")
 				return

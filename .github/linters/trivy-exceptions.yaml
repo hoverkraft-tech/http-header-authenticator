@@ -1,8 +1,0 @@
----
-misconfigurations:
-  - id: KSV-0110
-    paths:
-      - helm/chart/templates/deployment.yaml
-    statement:
-      The chart honors .Release.Namespace. Install with --namespace as documented;
-      Trivy renders with Helm defaults.
