@@ -1,15 +1,15 @@
 # build stage
-FROM golang:alpine AS builder
+FROM golang:1.27-alpine AS builder
 RUN apk add --no-cache git
 WORKDIR /go/src/app
 COPY go.* .
 COPY src/ .
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go get -d -v ./...
+    go mod download && go mod verify
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -o /go/bin/http-header-authenticator -v ./...
+    go build -mod=readonly -trimpath -o /go/bin/http-header-authenticator -v ./...
 
 # final stage
 FROM alpine:3.18

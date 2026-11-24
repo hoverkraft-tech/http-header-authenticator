@@ -16,69 +16,35 @@ permissions:
   contents: read
 
 jobs:
-  golangci-lint:
-    name: "Go: Lint"
+  go:
+    name: Go checks and coverage
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Install Go
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.21"
-      - name: Run linters
-        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
-        with:
-          version: v2.15.0
 
-  go-test:
-    name: "Go: Test"
-    strategy:
-      matrix:
-        go-version: ["1.21"]
-        platform: [ubuntu-latest]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install Go
-        if: success()
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Run tests
-        run: go test ./... -v -covermode=count
+      # Track main while validating the new shared Go actions in consumers.
+      - name: Setup Go
+        uses: hoverkraft-tech/ci-github-go/actions/setup-go@main
 
-  go-coverage:
-    name: "Go: Coverage"
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Install Go
-        if: success()
-        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
-        with:
-          go-version: "1.21"
-      - name: Calc coverage
-        run: |
-          go test ./... -v -covermode=count -coverprofile=coverage.out
-      - name: Convert coverage.out to coverage.lcov
-        uses: jandelgado/gcov2lcov-action@e4612787670fc5b5f49026b8c29c5569921de1db # v1.2.0
-        with:
-          version: v1.0.6
+      - name: Lint
+        uses: hoverkraft-tech/ci-github-go/actions/lint@main
+
+      - name: Test with race detection and coverage
+        id: tests
+        uses: hoverkraft-tech/ci-github-go/actions/test@main
+
       - name: Coveralls
+        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
         uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
         with:
-          github-token: ${{ secrets.github_token }}
-          file: coverage.lcov
-          allow-empty: true
+          file: coverage.out
+          format: golang
+
+      - name: Audit dependencies
+        uses: hoverkraft-tech/ci-github-go/actions/audit@main
 
   chart-testing:
     name: Test chart with the built image
@@ -138,7 +104,7 @@ jobs:
 
   docker-build-images:
     name: "Docker: Build Images"
-    needs: [golangci-lint, go-test, go-coverage]
+    needs: go
     uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
     permissions:
       attestations: write

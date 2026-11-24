@@ -38,3 +38,5 @@ docker-compose up -d --build
 ```shell
 go build -o ./bin/http-header-authenticator ./src/github.com/hoverkraft-tech/http-header-authenticator
 ```
+
+See the [development guide](docs/development.md) for local checks.

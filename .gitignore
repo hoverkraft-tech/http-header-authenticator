@@ -1,3 +1,6 @@
 .env
 .cache
 coverage.out
+
+junit.xml
+golangci-lint.sarif

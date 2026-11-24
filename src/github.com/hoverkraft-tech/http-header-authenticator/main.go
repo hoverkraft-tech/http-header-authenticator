@@ -31,25 +31,7 @@ func main() {
 			l := zerolog.New(os.Stdout).With().Timestamp().Logger()
 			l.Info().Msg(fmt.Sprintf("Expected header is '%s' and expected value is '%s'", headerName, expectedValue))
 
-			r := gin.New()
-			r.Use(gin.Recovery())
-			r.Use(requestid.New())
-			r.Use(CustomLoggerMiddleware(l))
-
-			// Health check endpoint
-			r.GET("/health", func(c *gin.Context) {
-				c.String(http.StatusOK, "OK")
-			})
-
-			// Check the presence of the header in all requests
-			r.NoRoute(func(c *gin.Context) {
-				value := c.GetHeader(headerName)
-				if value == expectedValue {
-					c.JSON(http.StatusOK, "HTTP header is present with the expected value.")
-				} else {
-					c.JSON(http.StatusForbidden, "HTTP header is not present with the expected value.")
-				}
-			})
+			r := newRouter(headerName, expectedValue, l)
 
 			fmt.Printf("Server is starting on port 8080...\n")
 			if err := r.Run(":8080"); err != nil {
@@ -82,4 +64,27 @@ func CustomLoggerMiddleware(logger zerolog.Logger) gin.HandlerFunc {
 				Msg("")
 		}
 	}
+}
+
+func newRouter(headerName, expectedValue string, logger zerolog.Logger) *gin.Engine {
+	r := gin.New()
+	r.Use(gin.Recovery())
+	r.Use(requestid.New())
+	r.Use(CustomLoggerMiddleware(logger))
+
+	// Health check endpoint
+	r.GET("/health", func(c *gin.Context) {
+		c.String(http.StatusOK, "OK")
+	})
+
+	// Check the presence of the header in all requests
+	r.NoRoute(func(c *gin.Context) {
+		value := c.GetHeader(headerName)
+		if value == expectedValue {
+			c.JSON(http.StatusOK, "HTTP header is present with the expected value.")
+		} else {
+			c.JSON(http.StatusForbidden, "HTTP header is not present with the expected value.")
+		}
+	})
+	return r
 }
