@@ -68,3 +68,8 @@ strong authentication value explicitly.
 Chart validation uses the synthetic token in
 [ci/default-values.yaml](../../helm/chart/ci/default-values.yaml). Production installs
 must provide `securityHeader.value`; the chart has no default authentication token.
+
+The existing GitHub CodeQL default setup continues to scan Go. The shared
+linter disables its additional CodeQL job because GitHub rejects advanced-setup
+results while default setup is enabled. Actionlint, Zizmor and Checkov still check
+workflow correctness and security.
