@@ -11,8 +11,7 @@ on:
 
 # jscpd:ignore-start
 # GitHub requires permissions and the shared-workflow call in each event entrypoint.
-permissions:
-  contents: read
+permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

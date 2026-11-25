@@ -42,21 +42,27 @@ failures continue to block validation. The semantic PR workflow and repository l
 share [.commitlintrc.json](../../.commitlintrc.json).
 
 External actions and reusable workflows use reviewed release SHAs with matching
-version comments. Dependabot maintains these references.
+version comments. Dependabot maintains these references. The pending shared workflow
+capabilities use immutable candidate commits with linked TODOs; replace those pins
+with the first containing release after the supporting PRs merge.
 
-Dependabot groups weekly updates for actions, language dependencies, Docker images
-and devcontainer features, with a seven-day cooldown and Conventional Commit titles.
-Renovate maintains runtime versions and embedded tool versions through the scheduled
-[workflow](../../.github/workflows/__renovate.yml) and
-[configuration](../../.github/renovate.json). It uses the organization CI bot's
-`CI_BOT_APP_CLIENT_ID` variable and `CI_BOT_APP_PRIVATE_KEY` secret. Dependabot
-continues to maintain package dependencies, actions, Docker images and features.
+Dependabot is the primary updater for Go modules, GitHub Actions, Docker images
+and devcontainer features, with weekly groups and a seven-day cooldown.
+Renovate is limited to versions outside those supported manifests: Go and
+golangci-lint feature options, and the govulncheck version embedded in the Makefile.
+It also maintains the explicit Go `toolchain` directive and the Helm CLI in
+`.tool-versions`. It cannot update module dependencies or raise the minimum Go version.
+The scheduled [Renovate workflow](../../.github/workflows/__renovate.yml) uses
+`CI_BOT_APP_CLIENT_ID` and `CI_BOT_APP_PRIVATE_KEY`; its
+[configuration](../../.github/renovate.json) explicitly limits enabled managers.
 Review the lockfile and run `make ci` when updating dependencies or features.
 
 ## Image and chart checks
 
 Tests run once with race detection and atomic coverage. Coveralls receives that same
-coverage profile. Image builds wait for code and repository checks; container
+coverage profile through the shared Go workflow. Helm validation and publication
+use the dedicated container workflows. The Harbor robot username and password
+remain secrets passed only to chart publication. Image builds wait for code and repository checks; container
 health/authentication and Helm installation checks validate the built digest before
 release promotion. Chart publication and Docker Hub mirroring retain their existing
 destinations and credentials.

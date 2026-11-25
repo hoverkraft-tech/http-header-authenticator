@@ -21,7 +21,7 @@ concurrency:
 
 jobs:
   prepare:
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/prepare-chart-release.yml@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/prepare-chart-release.yml@b055d6ce0f3a5e223615ad494d88d92e17af11e5 # 4.2.0
     permissions:
       actions: write
       contents: write
@@ -53,7 +53,7 @@ jobs:
 
   promote:
     needs: validate
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-promote-images.yml@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-promote-images.yml@b055d6ce0f3a5e223615ad494d88d92e17af11e5 # 4.2.0
     permissions:
       actions: read
       attestations: read
@@ -91,40 +91,23 @@ jobs:
         run: docker buildx imagetools create --tag "docker.io/webofmars/http-header-authenticator:$RELEASE_TAG" "$IMAGE"
 
   release-chart:
-    needs: [prepare, mirror]
-    runs-on: self-hosted
+    needs: [prepare, validate, mirror]
+    # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-container/pull/999
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/helm-chart-release.yml@d21c49f884d2ca8406bcab4bce9c44b29ce4a8ed # PR #999 (unreleased)
     permissions:
       contents: read
       packages: write
       id-token: write
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - name: Prepare release chart archive
-        id: prepare-chart
-        uses: hoverkraft-tech/ci-github-container/actions/helm/prepare-chart@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
-        with:
-          path: helm/chart
-
-      - name: Publish prepared chart archive
-        uses: hoverkraft-tech/ci-github-container/actions/helm/release-chart@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
-        with:
-          archive: ${{ steps.prepare-chart.outputs.archive }}
-          checksum: ${{ steps.prepare-chart.outputs.checksum }}
-          oci-registry: harbor.hoverkraft.cloud
-          oci-repository: public/charts
-          oci-registry-username: ${{ secrets.HARBOR_REGISTRY_USER }}
-          oci-registry-password: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
-
-      - name: Clean prepared chart archive
-        if: always() && steps.prepare-chart.outputs.archive != ''
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          CHART_ARCHIVE: ${{ steps.prepare-chart.outputs.archive }}
-        with:
-          script: await io.rmRF(process.env.CHART_ARCHIVE);
+    with:
+      path: helm/chart
+      config: ct.yaml
+      helm-set: ${{ needs.validate.outputs.chart-helm-set }}
+      runs-on: '["self-hosted"]'
+      oci-registry: harbor.hoverkraft.cloud
+      oci-repository: public/charts
+    secrets:
+      oci-registry-username: ${{ secrets.HARBOR_REGISTRY_USER }}
+      oci-registry-password: ${{ secrets.HARBOR_REGISTRY_PASSWORD }}
 
   release:
     needs: [prepare, release-chart]
@@ -137,4 +120,4 @@ jobs:
         with:
           tag: ${{ needs.prepare.outputs.tag }}
           target-ref: ${{ github.sha }}
-          changelog-summary: ${{ format('{{"llmAuth":{0},"llmProvider":"openai"}}', toJSON(secrets.OPENAI_API_KEY)) }}
+          changelog-summary: ${{ secrets.CHANGELOG_SUMMARY }}

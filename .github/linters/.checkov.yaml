@@ -1,4 +1,6 @@
 ---
 quiet: true
+# Supply the required synthetic authentication value so Checkov can render and scan the chart.
+# This is a Helm values input, not a scan exclusion.
 var-file:
   - helm/chart/ci/default-values.yaml

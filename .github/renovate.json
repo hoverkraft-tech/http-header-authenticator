@@ -36,13 +36,22 @@
   ],
   "packageRules": [
     {
+      "description": "Dependabot owns Go module dependencies and minimum Go requirements.",
       "matchManagers": ["gomod"],
-      "matchDepNames": ["!go"],
       "enabled": false
     },
     {
-      "matchDepNames": ["go"],
+      "description": "Only the explicit compiler toolchain is maintained by Renovate.",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["toolchain"],
+      "enabled": true,
       "groupName": "Go toolchain"
+    },
+    {
+      "description": "Maintain the Helm CLI in .tool-versions; chart dependencies belong to Dependabot.",
+      "matchManagers": ["asdf"],
+      "matchDepNames": ["!helm"],
+      "enabled": false
     }
   ]
 }

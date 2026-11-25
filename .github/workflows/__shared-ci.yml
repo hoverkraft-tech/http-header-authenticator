@@ -9,12 +9,14 @@ on:
         type: boolean
         default: false
     outputs:
+      chart-helm-set:
+        description: Installation overrides for the validated immutable image
+        value: ${{ jobs.test-image.outputs.helm-set }}
       job-results:
         description: Build and validation results for promotion
         value: ${{ toJSON(jobs) }}
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   lint:
@@ -42,96 +44,31 @@ jobs:
 
   test:
     name: Go checks and coverage
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-      - name: Setup Go
-        uses: hoverkraft-tech/ci-github-go/actions/setup-go@dcc9e10f1938e4496a40edc4e90eb0a6294a8bb2 # 0.0.1
-
-      - name: Lint
-        uses: hoverkraft-tech/ci-github-go/actions/lint@dcc9e10f1938e4496a40edc4e90eb0a6294a8bb2 # 0.0.1
-
-      - name: Test with race detection and coverage
-        id: tests
-        uses: hoverkraft-tech/ci-github-go/actions/test@dcc9e10f1938e4496a40edc4e90eb0a6294a8bb2 # 0.0.1
-
-      - name: Coveralls
-        if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
-        uses: coverallsapp/github-action@8d6379e14d29928660c4ba802d8e85393440b329 # v2.3.8
-        with:
-          file: coverage.out
-          format: golang
-
-      - name: Audit dependencies
-        uses: hoverkraft-tech/ci-github-go/actions/audit@dcc9e10f1938e4496a40edc4e90eb0a6294a8bb2 # 0.0.1
+    # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-go/pull/13
+    uses: hoverkraft-tech/ci-github-go/.github/workflows/continuous-integration.yml@2db38ba3c9d23770c04b71866551231470cd2994 # PR #13 (unreleased)
+    permissions:
+      contents: read
+      id-token: write
+    with:
+      test: '{"coverage":"coveralls"}'
 
   chart-testing:
-    name: Test chart with the built image
-    needs: docker-build-images
-    runs-on: ubuntu-latest
+    name: Test chart with the validated image
+    needs: [docker-build-images, test-image]
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/helm-chart-ci.yml@b055d6ce0f3a5e223615ad494d88d92e17af11e5 # 4.2.0
     permissions:
       contents: read
       packages: read
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          persist-credentials: false
-
-      - id: prepare-chart
-        uses: hoverkraft-tech/ci-github-container/actions/helm/prepare-chart@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
-        with:
-          path: helm/chart
-
-      - uses: hoverkraft-tech/ci-github-container/actions/helm/lint-chart@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
-        with:
-          archive: ${{ steps.prepare-chart.outputs.archive }}
-          checksum: ${{ steps.prepare-chart.outputs.checksum }}
-          config: ct.yaml
-
-      - id: image
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          BUILT_IMAGES: ${{ needs.docker-build-images.outputs.built-images }}
-        with:
-          script: |
-            const { images, digest } = JSON.parse(process.env.BUILT_IMAGES).app;
-            const reference = images[0].split('@')[0];
-            const separator = reference.lastIndexOf(':');
-            if (separator <= reference.lastIndexOf('/') || !/^sha256:[a-f0-9]{64}$/.test(digest)) {
-              throw new Error('Expected a tagged image with an immutable digest');
-            }
-            core.setOutput('repository', reference.slice(0, separator));
-            core.setOutput('tag', `${reference.slice(separator + 1)}@${digest}`);
-
-      - uses: hoverkraft-tech/ci-github-container/actions/helm/test-chart@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
-        with:
-          archive: ${{ steps.prepare-chart.outputs.archive }}
-          checksum: ${{ steps.prepare-chart.outputs.checksum }}
-          config: ct.yaml
-          helm-set: |
-            securityHeader.value=ci-test-value
-            image.repository=${{ steps.image.outputs.repository }}
-            image.tag=${{ steps.image.outputs.tag }}
-            imagePullSecrets[0].name=regcred
-
-      # jscpd:ignore-start
-      # Both independent chart jobs must remove their own downloaded archive.
-      - name: Clean prepared chart archive
-        if: always() && steps.prepare-chart.outputs.archive != ''
-        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
-        env:
-          CHART_ARCHIVE: ${{ steps.prepare-chart.outputs.archive }}
-        with:
-          script: await io.rmRF(process.env.CHART_ARCHIVE);
-          # jscpd:ignore-end
+    with:
+      path: helm/chart
+      config: ct.yaml
+      images: ${{ needs.docker-build-images.outputs.built-images }}
+      helm-set: ${{ needs.test-image.outputs.helm-set }}
 
   docker-build-images:
     name: "Docker: Build Images"
     needs: [lint, test]
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@988ccc2b85dec5822e801d7bc0622cad7cc94870 # 4.1.0
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@b055d6ce0f3a5e223615ad494d88d92e17af11e5 # 4.2.0
     permissions:
       attestations: write
       actions: read
@@ -162,6 +99,7 @@ jobs:
       packages: read
     outputs:
       validated-images: ${{ needs.docker-build-images.outputs.built-images }}
+      helm-set: ${{ steps.image.outputs.helm-set }}
     steps:
       - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
         with:
@@ -190,6 +128,26 @@ jobs:
             sleep 1
           done
           test "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy
+
+      - name: Map the validated digest into chart values
+        id: image
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          BUILT_IMAGES: ${{ needs.docker-build-images.outputs.built-images }}
+        with:
+          script: |
+            const { images, digest } = JSON.parse(process.env.BUILT_IMAGES).app;
+            const reference = images[0].split('@')[0];
+            const separator = reference.lastIndexOf(':');
+            if (separator <= reference.lastIndexOf('/') || !/^sha256:[a-f0-9]{64}$/.test(digest)) {
+              throw new Error('Expected a tagged image with an immutable digest');
+            }
+            core.setOutput('helm-set', [
+              'securityHeader.value=ci-test-value',
+              `image.repository=${reference.slice(0, separator)}`,
+              `image.tag=${reference.slice(separator + 1)}@${digest}`,
+              'imagePullSecrets[0].name=regcred',
+            ].join('\n'));
 
   reports:
     if: ${{ !cancelled() }}
