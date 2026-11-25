@@ -19,7 +19,7 @@ permissions:
 jobs:
   lint:
     name: Repository quality
-    uses: hoverkraft-tech/ci-github-common/.github/workflows/linter.yml@33462c06bcbbd9144d7f661929e61953604b444d # 4.3.2
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/linter.yml@af0bdd6313bd49aaf4a8a7f0de005fb0db856b03 # 4.3.3
     permissions:
       actions: read
       contents: read
@@ -48,17 +48,15 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-
-      # Track main while validating the new shared Go actions in consumers.
       - name: Setup Go
-        uses: hoverkraft-tech/ci-github-go/actions/setup-go@main # ratchet:exclude # zizmor: ignore[unpinned-uses]
+        uses: hoverkraft-tech/ci-github-go/actions/setup-go@dcc9e10f1938e4496a40edc4e90eb0a6294a8bb2 # 0.0.1
 
       - name: Lint
-        uses: hoverkraft-tech/ci-github-go/actions/lint@main # ratchet:exclude # zizmor: ignore[unpinned-uses]
+        uses: hoverkraft-tech/ci-github-go/actions/lint@dcc9e10f1938e4496a40edc4e90eb0a6294a8bb2 # 0.0.1
 
       - name: Test with race detection and coverage
         id: tests
-        uses: hoverkraft-tech/ci-github-go/actions/test@main # ratchet:exclude # zizmor: ignore[unpinned-uses]
+        uses: hoverkraft-tech/ci-github-go/actions/test@dcc9e10f1938e4496a40edc4e90eb0a6294a8bb2 # 0.0.1
 
       - name: Coveralls
         if: ${{ !cancelled() && steps.tests.outcome != 'skipped' }}
@@ -68,7 +66,7 @@ jobs:
           format: golang
 
       - name: Audit dependencies
-        uses: hoverkraft-tech/ci-github-go/actions/audit@main # ratchet:exclude # zizmor: ignore[unpinned-uses]
+        uses: hoverkraft-tech/ci-github-go/actions/audit@dcc9e10f1938e4496a40edc4e90eb0a6294a8bb2 # 0.0.1
 
   chart-testing:
     name: Test chart with the built image
@@ -196,7 +194,7 @@ jobs:
   reports:
     if: ${{ !cancelled() }}
     needs: [lint, test]
-    uses: hoverkraft-tech/ci-github-common/.github/workflows/ci-reports.yml@33462c06bcbbd9144d7f661929e61953604b444d # 4.3.2
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/ci-reports.yml@af0bdd6313bd49aaf4a8a7f0de005fb0db856b03 # 4.3.3
     permissions:
       contents: read
       pull-requests: write
