@@ -64,9 +64,11 @@ coverage profile through the shared Go workflow. Helm validation and publication
 use the dedicated container workflows. The Harbor robot username and password
 remain secrets passed only to chart publication. Image builds wait for code and repository checks; container
 health/authentication and Helm installation checks validate the built digest before
-release promotion. The shared `docker-mirror-image.yml` copies the promoted immutable
-reference to Docker Hub and verifies that its digest is unchanged. Chart publication
-and Docker Hub mirroring retain their existing destinations and credentials.
+release promotion. The shared `docker-promote-images.yml` publishes the validated
+digest to GHCR and the explicitly configured Docker Hub destination in one locked,
+journaled operation. It preserves and verifies the copied signatures and provenance.
+Chart publication waits for both registries to succeed. Registry destinations and
+credentials remain unchanged.
 
 ## Container and chart policy
 

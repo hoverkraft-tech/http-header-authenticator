@@ -52,8 +52,9 @@ jobs:
       candidate-images: true
 
   promote:
-    needs: validate
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-promote-images.yml@a5dc1ea7c1f4c2dffc3267c5be7304d01284f2ec # 4.2.1
+    needs: [prepare, validate]
+    # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-container/pull/1001
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-promote-images.yml@c9feed706862fc88f0fd33d287e6d6c12e738f74 # PR #1001 (unreleased)
     permissions:
       actions: read
       attestations: read
@@ -63,26 +64,18 @@ jobs:
       pull-requests: read
     with:
       job-results: ${{ needs.validate.outputs.job-results }}
+      additional-destinations: |
+        {"app":["docker.io/webofmars/http-header-authenticator:${{ needs.prepare.outputs.tag }}"]}
     secrets:
       oci-registry-password: ${{ secrets.GITHUB_TOKEN }}
-
-  mirror:
-    name: Mirror validated image to Docker Hub
-    needs: [prepare, promote]
-    # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-container/pull/1001
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-mirror-image.yml@e8bd81eb506404d63f0304b02ff254e5fd2f0ce5 # PR #1001 (unreleased)
-    permissions:
-      contents: read
-      packages: read
-    with:
-      source-image: ${{ fromJSON(needs.promote.outputs.built-images).app.images[0] }}
-      destination-image: docker.io/webofmars/http-header-authenticator:${{ needs.prepare.outputs.tag }}
-      destination-registry-username: ${{ vars.DOCKERHUB_REGISTRY_USERNAME }}
-    secrets:
-      destination-registry-password: ${{ secrets.DOCKERHUB_REGISTRY_PASSWORD }}
+      destination-credentials: |
+        {"docker.io":{
+          "username":${{ toJSON(vars.DOCKERHUB_REGISTRY_USERNAME) }},
+          "password":${{ toJSON(secrets.DOCKERHUB_REGISTRY_PASSWORD) }}
+        }}
 
   release-chart:
-    needs: [prepare, validate, mirror]
+    needs: [prepare, validate, promote]
     uses: hoverkraft-tech/ci-github-container/.github/workflows/helm-chart-release.yml@a5dc1ea7c1f4c2dffc3267c5be7304d01284f2ec # 4.2.1
     permissions:
       contents: read
