@@ -45,7 +45,7 @@ jobs:
   test:
     name: Go checks and coverage
     # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-go/pull/13
-    uses: hoverkraft-tech/ci-github-go/.github/workflows/continuous-integration.yml@2db38ba3c9d23770c04b71866551231470cd2994 # PR #13 (unreleased)
+    uses: hoverkraft-tech/ci-github-go/.github/workflows/continuous-integration.yml@9968f40606caff42d54df871ffe01dec80409107 # PR #13 (unreleased)
     permissions:
       contents: read
       id-token: write
@@ -55,7 +55,7 @@ jobs:
   chart-testing:
     name: Test chart with the validated image
     needs: [docker-build-images, test-image]
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/helm-chart-ci.yml@b055d6ce0f3a5e223615ad494d88d92e17af11e5 # 4.2.0
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/helm-chart-ci.yml@a5dc1ea7c1f4c2dffc3267c5be7304d01284f2ec # 4.2.1
     permissions:
       contents: read
       packages: read
@@ -68,7 +68,7 @@ jobs:
   docker-build-images:
     name: "Docker: Build Images"
     needs: [lint, test]
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@b055d6ce0f3a5e223615ad494d88d92e17af11e5 # 4.2.0
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@a5dc1ea7c1f4c2dffc3267c5be7304d01284f2ec # 4.2.1
     permissions:
       attestations: write
       actions: read
