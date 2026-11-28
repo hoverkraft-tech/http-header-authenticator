@@ -1,0 +1,2 @@
+# Helm Go templates are validated by the chart checks.
+/helm/chart/templates/**

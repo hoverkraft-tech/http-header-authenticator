@@ -1,124 +1,77 @@
+---
 name: Internal - Common Continuous Integration tasks
 
 on:
   workflow_call:
     inputs:
-      tag:
-        description: "Tag Version (semver - x.x.x)"
-        type: string
-        required: false
+      candidate-images:
+        description: Build temporary candidate images for release validation
+        type: boolean
+        default: false
     outputs:
-      built-images:
-        value: ${{ jobs.docker-build-images.outputs.built-images }}
+      chart-helm-set:
+        description: Installation overrides for the validated immutable image
+        value: ${{ jobs.test-image.outputs.helm-set }}
+      job-results:
+        description: Build and validation results for promotion
+        value: ${{ toJSON(jobs) }}
+
+permissions: {}
 
 jobs:
+  lint:
+    name: Repository quality
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/linter.yml@a0bdfab27afed208f3c105e4b543818b8388b80b # PR #683 (unreleased)
+    permissions:
+      actions: read
+      contents: read
+      issues: write
+      packages: read
+      pull-requests: write
+      security-events: write
+      statuses: write
+    with:
+      # Keep the repository-managed CodeQL default setup for Go.
+      codeql-languages: ""
+      lint-all: true
+      # GO_MODULES runs the full linter recursively; standalone-file mode cannot span packages.
+      linter-env: |
+        VALIDATE_GO=false
+        GOTOOLCHAIN=local
+        IGNORE_GITIGNORED_FILES=true
+        LOG_LEVEL=INFO
 
-  golangci-lint:
-    name: "Go: Lint"
-    runs-on: self-hosted
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install Go
-        uses: actions/setup-go@v5.0.0
-        with:
-          go-version: '1.21'
-      - name: Run linters
-        uses: golangci/golangci-lint-action@v4
-        with:
-          version: v1.54
-
-  go-test:
-    name: "Go: Test"
-    strategy:
-      matrix:
-        go-version: ['1.21']
-        platform: [self-hosted]
-    runs-on: ${{ matrix.platform }}
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install Go
-        if: success()
-        uses: actions/setup-go@v5.0.0
-        with:
-          go-version: ${{ matrix.go-version }}
-      - name: Run tests
-        run: go test ./... -v -covermode=count
-
-  go-coverage:
-    name: "Go: Coverage"
-    runs-on: self-hosted
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-      - name: Install Go
-        if: success()
-        uses: actions/setup-go@v5.0.0
-        with:
-          go-version: '1.21'
-      - name: Calc coverage
-        run: |
-          go test ./... -v -covermode=count -coverprofile=coverage.out
-      - name: Convert coverage.out to coverage.lcov
-        uses: jandelgado/gcov2lcov-action@v1.0.9
-        with:
-          version: v1.0.6
-      - name: Coveralls
-        uses: coverallsapp/github-action@v2.2.3
-        with:
-          github-token: ${{ secrets.github_token }}
-          file: coverage.lcov
-          allow-empty: true
+  test:
+    name: Go checks and coverage
+    # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-go/pull/14
+    uses: hoverkraft-tech/ci-github-go/.github/workflows/continuous-integration.yml@37b2f0252f62b352ca7423a31c1f8cef80eab1fb # PR #14 (unreleased)
+    permissions:
+      actions: read
+      contents: read
+      id-token: write
+    with:
+      go-versions: '["1.26", "1.27"]'
 
   chart-testing:
-    name: "Helm: Chart Testing"
-    runs-on: self-hosted
-    steps:
-
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      # Install tools with asdf
-      - name: Install tools with asdf
-        uses: asdf-vm/actions/install@v3
-
-      - uses: actions/setup-python@v5
-        with:
-          python-version: '3.9'
-          check-latest: true
-
-      - name: Set up chart-testing
-        uses: helm/chart-testing-action@v2.6.1
-
-      - name: Run chart-testing (list-changed)
-        id: list-changed
-        run: |
-          changed=$(ct list-changed --target-branch ${{ github.event.repository.default_branch }})
-          if [[ -n "$changed" ]]; then
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-
-      - name: Run chart-testing (lint)
-        if: steps.list-changed.outputs.changed == 'true'
-        run: ct lint --target-branch ${{ github.event.repository.default_branch }}
-
-      - name: Create kind cluster
-        if: steps.list-changed.outputs.changed == 'true'
-        uses: helm/kind-action@v1.9.0
-
-      - name: Run chart-testing (install)
-        if: steps.list-changed.outputs.changed == 'true'
-        run: ct install --target-branch ${{ github.event.repository.default_branch }}
+    name: Test chart with the validated image
+    needs: [docker-build-images, test-image]
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/helm-chart-ci.yml@a5dc1ea7c1f4c2dffc3267c5be7304d01284f2ec # 4.2.1
+    permissions:
+      contents: read
+      packages: read
+    with:
+      path: helm/chart
+      config: ct.yaml
+      images: ${{ needs.docker-build-images.outputs.built-images }}
+      helm-set: ${{ needs.test-image.outputs.helm-set }}
 
   docker-build-images:
     name: "Docker: Build Images"
-    needs: [golangci-lint, go-test, go-coverage, chart-testing]
-    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@0.15.1
+    needs: [lint, test]
+    uses: hoverkraft-tech/ci-github-container/.github/workflows/docker-build-images.yml@a5dc1ea7c1f4c2dffc3267c5be7304d01284f2ec # 4.2.1
     permissions:
-      actions: write
+      attestations: write
+      actions: read
       contents: read
       id-token: write
       issues: read
@@ -127,15 +80,106 @@ jobs:
     secrets:
       oci-registry-password: ${{ secrets.GITHUB_TOKEN }}
     with:
-      runs-on: '["self-hosted"]'
-      oci-registry: "ghcr.io"
+      candidate: ${{ inputs.candidate-images }}
       images: |
         [{
           "name": "app",
-          "tag": "${{ inputs.tag }}",
           "dockerfile": "./Dockerfile",
           "platforms": [
             "linux/amd64",
             "linux/arm64"
           ]
         }]
+  test-image:
+    name: Test container authentication
+    needs: docker-build-images
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: read
+    outputs:
+      validated-images: ${{ needs.docker-build-images.outputs.built-images }}
+      helm-set: ${{ steps.image.outputs.helm-set }}
+    steps:
+      - uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ github.token }}
+
+      - name: Check allowed and rejected requests against the built digest
+        env:
+          IMAGE: ${{ fromJSON(needs.docker-build-images.outputs.built-images).app.images[0] }}
+        run: |
+          container=$(docker run -d --rm --read-only --cap-drop ALL --security-opt no-new-privileges \
+            --health-interval 1s -p 127.0.0.1::8080 -e HEADER=X-Test-Token -e VALUE=ci-test-value "$IMAGE")
+          trap 'docker rm -f "$container" >/dev/null' EXIT
+          port=$(docker port "$container" 8080/tcp | cut -d: -f2)
+          url="http://127.0.0.1:$port"
+          curl --fail --retry 15 --retry-connrefused --retry-delay 1 "$url/health"
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Test-Token: ci-test-value' "$url/check")" = 200 # gitleaks:allow - test token
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'X-Test-Token: wrong-value' "$url/check")" = 403 # gitleaks:allow - invalid test token
+          test "$(curl -s -o /dev/null -w '%{http_code}' "$url/check")" = 403
+          test "$(docker exec "$container" id -u)" = 10001
+          for _ in {1..15}; do
+            if test "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy; then
+              break
+            fi
+            sleep 1
+          done
+          test "$(docker inspect --format '{{.State.Health.Status}}' "$container")" = healthy
+
+      - name: Map the validated digest into chart values
+        id: image
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
+        env:
+          BUILT_IMAGES: ${{ needs.docker-build-images.outputs.built-images }}
+        with:
+          script: |
+            const { images, digest } = JSON.parse(process.env.BUILT_IMAGES).app;
+            const reference = images[0].split('@')[0];
+            const separator = reference.lastIndexOf(':');
+            if (separator <= reference.lastIndexOf('/') || !/^sha256:[a-f0-9]{64}$/.test(digest)) {
+              throw new Error('Expected a tagged image with an immutable digest');
+            }
+            core.setOutput('helm-set', [
+              'securityHeader.value=ci-test-value',
+              `image.repository=${reference.slice(0, separator)}`,
+              `image.tag=${reference.slice(separator + 1)}@${digest}`,
+              'imagePullSecrets[0].name=regcred',
+            ].join('\n'));
+
+  reports:
+    if: always()
+    needs: [lint, test, docker-build-images, test-image, chart-testing]
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/ci-reports.yml@a0bdfab27afed208f3c105e4b543818b8388b80b # PR #683 (unreleased)
+    permissions:
+      actions: read
+      contents: read
+      pull-requests: write
+      code-quality: write
+      id-token: write
+      security-events: write
+    with:
+      job-results: ${{ toJSON(needs) }}
+      test-coverage-reporters: |
+        auto
+        coveralls
+
+  complete:
+    name: CI complete
+    if: always()
+    needs:
+      - lint
+      - test
+      - docker-build-images
+      - test-image
+      - chart-testing
+      - reports
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions: {}
+    steps:
+      - uses: hoverkraft-tech/ci-github-common/actions/check-jobs@a0bdfab27afed208f3c105e4b543818b8388b80b # PR #683 (unreleased)
+        with:
+          job-results: ${{ toJSON(needs) }}

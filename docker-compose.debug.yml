@@ -1,5 +1,4 @@
-version: '3.4'
-
+---
 services:
   http-header-authenticator:
     image: http-header-authenticator
@@ -7,4 +6,12 @@ services:
       context: .
       dockerfile: ./Dockerfile
     ports:
-      - 8080:8080
+      - 127.0.0.1:8080:8080
+    read_only: true
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      HEADER: X-test-secret
+      VALUE: ${AUTH_TOKEN:?Set AUTH_TOKEN to a strong secret}

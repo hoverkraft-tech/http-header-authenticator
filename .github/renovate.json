@@ -1,0 +1,57 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "enabledManagers": ["custom.regex", "gomod", "asdf"],
+  "semanticCommits": "enabled",
+  "semanticCommitType": "build",
+  "minimumReleaseAge": "7 days",
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.devcontainer/devcontainer\\.json$/"],
+      "matchStrings": [
+        "\"ghcr.io/devcontainers/features/go:1\":\\s*\\{\\s*\"version\":\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "datasourceTemplate": "golang-version",
+      "depNameTemplate": "go"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.devcontainer/devcontainer\\.json$/"],
+      "matchStrings": [
+        "\"golangciLintVersion\":\\s*\"(?<currentValue>[0-9.]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "depNameTemplate": "golangci/golangci-lint"
+    },
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^Makefile$/"],
+      "matchStrings": [
+        "golang.org/x/vuln/cmd/govulncheck@(?<currentValue>v[0-9.]+)"
+      ],
+      "datasourceTemplate": "go",
+      "depNameTemplate": "golang.org/x/vuln"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Dependabot owns Go module dependencies and minimum Go requirements.",
+      "matchManagers": ["gomod"],
+      "enabled": false
+    },
+    {
+      "description": "Only the explicit compiler toolchain is maintained by Renovate.",
+      "matchManagers": ["gomod"],
+      "matchDepTypes": ["toolchain"],
+      "enabled": true,
+      "groupName": "Go toolchain"
+    },
+    {
+      "description": "Maintain the Helm CLI in .tool-versions; chart dependencies belong to Dependabot.",
+      "matchManagers": ["asdf"],
+      "matchDepNames": ["!helm"],
+      "enabled": false
+    }
+  ]
+}

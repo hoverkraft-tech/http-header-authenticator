@@ -1,0 +1,16 @@
+---
+exit-code: 1
+exit-on-eol: 2
+scan:
+  disable-telemetry: true
+  scanners:
+    - vuln
+    - misconfig
+    - secret
+misconfiguration:
+  helm:
+    values:
+      - helm/chart/ci/default-values.yaml
+rego:
+  data:
+    - .github/linters/trivy-data

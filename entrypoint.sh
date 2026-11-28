@@ -1,11 +1,13 @@
-#!/bin/ash
-
-# shellcheck shell=dash
-
+#!/bin/sh
 set -eu
-set -o pipefail
 
-[ -z "${HEADER}" ] && echo "HEADER is required" && exit 1
-[ -z "${VALUE}" ] && echo "VALUE is required" && exit 1
+if [ -z "${HEADER:-}" ]; then
+  echo "HEADER is required" >&2
+  exit 1
+fi
+if [ -z "${VALUE:-}" ]; then
+  echo "VALUE is required" >&2
+  exit 1
+fi
 
-/usr/local/bin/http-header-authenticator check -H "${HEADER}" -V "${VALUE}"
+exec /usr/local/bin/http-header-authenticator check -H "${HEADER}" -V "${VALUE}"
