@@ -21,7 +21,7 @@ permissions: {}
 jobs:
   lint:
     name: Repository quality
-    uses: hoverkraft-tech/ci-github-common/.github/workflows/linter.yml@af0bdd6313bd49aaf4a8a7f0de005fb0db856b03 # 4.3.3
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/linter.yml@57ec4a8bf0ab9ea52beea725b5e59895ed39f4f2 # PR #683 (unreleased)
     permissions:
       actions: read
       contents: read
@@ -31,7 +31,6 @@ jobs:
       security-events: write
       statuses: write
     with:
-      comment: false
       # Keep the repository-managed CodeQL default setup for Go.
       codeql-languages: ""
       lint-all: true
@@ -44,13 +43,14 @@ jobs:
 
   test:
     name: Go checks and coverage
-    # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-go/pull/13
-    uses: hoverkraft-tech/ci-github-go/.github/workflows/continuous-integration.yml@9968f40606caff42d54df871ffe01dec80409107 # PR #13 (unreleased)
+    # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-go/pull/14
+    uses: hoverkraft-tech/ci-github-go/.github/workflows/continuous-integration.yml@8245b03d3b26196e5d3d6ed3559f4a3e72fa24f5 # PR #14 (unreleased)
     permissions:
+      actions: read
       contents: read
       id-token: write
     with:
-      test: '{"coverage":"coveralls"}'
+      go-versions: '["1.26", "1.27"]'
 
   chart-testing:
     name: Test chart with the validated image
@@ -151,10 +151,17 @@ jobs:
 
   reports:
     if: ${{ !cancelled() }}
-    needs: [lint, test]
-    uses: hoverkraft-tech/ci-github-common/.github/workflows/ci-reports.yml@af0bdd6313bd49aaf4a8a7f0de005fb0db856b03 # 4.3.3
+    needs: [lint, test, docker-build-images, test-image, chart-testing]
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/ci-reports.yml@57ec4a8bf0ab9ea52beea725b5e59895ed39f4f2 # PR #683 (unreleased)
     permissions:
+      actions: read
       contents: read
       pull-requests: write
+      code-quality: write
+      id-token: write
+      security-events: write
     with:
       job-results: ${{ toJSON(needs) }}
+      test-coverage-reporters: |
+        auto
+        coveralls

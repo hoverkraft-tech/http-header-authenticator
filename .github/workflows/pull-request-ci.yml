@@ -18,6 +18,7 @@ jobs:
     name: Continuous Integration
     uses: $/.github/workflows/__shared-ci.yml
     permissions:
+      code-quality: write
       attestations: write
       actions: read
       contents: read

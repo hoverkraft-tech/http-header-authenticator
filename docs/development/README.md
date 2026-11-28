@@ -59,8 +59,18 @@ Review the lockfile and run `make ci` when updating dependencies or features.
 
 ## Image and chart checks
 
-Tests run once with race detection and atomic coverage. Coveralls receives that same
-coverage profile through the shared Go workflow. Helm validation and publication
+Tests run on Go 1.26 and 1.27 with race detection and detailed JUnit results for
+both runtimes. Lint, audit, build and atomic coverage run once on Go 1.27. The
+shared Go action retains the native coverage profile and validates source paths.
+
+One terminal `reports` job waits for all code, container and Helm checks. It
+publishes annotations and a consolidated summary with expandable details.
+Coverage uses GitHub Code Quality when available, otherwise the pull request
+comment, and is also submitted to Coveralls. Native Go coverage is shown as
+statement coverage; a normalized LCOV projection supplies Coveralls without
+changing the retained profile.
+
+Helm validation and publication
 use the dedicated container workflows. The Harbor robot username and password
 remain secrets passed only to chart publication. Image builds wait for code and repository checks; container
 health/authentication and Helm installation checks validate the built digest before
