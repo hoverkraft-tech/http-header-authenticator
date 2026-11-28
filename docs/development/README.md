@@ -35,6 +35,12 @@ Go CI still uses the project toolchain.
 
 ## Continuous integration
 
+The separate `CI complete` job waits for every required CI job and reporting.
+It fails on failed, cancelled or unexpectedly skipped jobs. Report publication
+can succeed while reporting failed tests; the producer and `CI complete` remain
+failed. Require `CI complete` for merging instead of treating the reporting
+workflow as the overall CI verdict.
+
 Pull requests, merge queues and main-branch pushes run the shared language checks
 and repository linter. A weekly run detects newly disclosed dependency vulnerabilities.
 Shared CI reports consolidate native reports after the producer jobs finish; producer
