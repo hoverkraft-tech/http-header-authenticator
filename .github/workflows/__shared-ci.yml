@@ -21,7 +21,7 @@ permissions: {}
 jobs:
   lint:
     name: Repository quality
-    uses: hoverkraft-tech/ci-github-common/.github/workflows/linter.yml@c0b651dd3d5f9ce5eff49c3c675c1f5c7f2ca581 # PR #683 (unreleased)
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/linter.yml@a0bdfab27afed208f3c105e4b543818b8388b80b # PR #683 (unreleased)
     permissions:
       actions: read
       contents: read
@@ -44,7 +44,7 @@ jobs:
   test:
     name: Go checks and coverage
     # TODO: Replace this candidate pin with a released SHA after https://github.com/hoverkraft-tech/ci-github-go/pull/14
-    uses: hoverkraft-tech/ci-github-go/.github/workflows/continuous-integration.yml@ea195d7103a4269e4fa8dc5b1c8ae8debab325a6 # PR #14 (unreleased)
+    uses: hoverkraft-tech/ci-github-go/.github/workflows/continuous-integration.yml@37b2f0252f62b352ca7423a31c1f8cef80eab1fb # PR #14 (unreleased)
     permissions:
       actions: read
       contents: read
@@ -152,7 +152,7 @@ jobs:
   reports:
     if: always()
     needs: [lint, test, docker-build-images, test-image, chart-testing]
-    uses: hoverkraft-tech/ci-github-common/.github/workflows/ci-reports.yml@c0b651dd3d5f9ce5eff49c3c675c1f5c7f2ca581 # PR #683 (unreleased)
+    uses: hoverkraft-tech/ci-github-common/.github/workflows/ci-reports.yml@a0bdfab27afed208f3c105e4b543818b8388b80b # PR #683 (unreleased)
     permissions:
       actions: read
       contents: read
@@ -180,6 +180,6 @@ jobs:
     timeout-minutes: 5
     permissions: {}
     steps:
-      - uses: hoverkraft-tech/ci-github-common/actions/check-jobs@c0b651dd3d5f9ce5eff49c3c675c1f5c7f2ca581 # PR #683 (unreleased)
+      - uses: hoverkraft-tech/ci-github-common/actions/check-jobs@a0bdfab27afed208f3c105e4b543818b8388b80b # PR #683 (unreleased)
         with:
           job-results: ${{ toJSON(needs) }}
